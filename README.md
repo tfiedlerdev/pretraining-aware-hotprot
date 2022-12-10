@@ -1,4 +1,8 @@
 # HotProt
+## Resouces
+- [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
+- [ESMFold paper](https://www.biorxiv.org/content/10.1101/2022.07.20.500902v2.full.pdf)
+- [ESM Github Repo](https://github.com/facebookresearch/esm)
 
 ## Setup
 
