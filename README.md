@@ -8,7 +8,10 @@
 
 Create new virtual environment
 Run `pip install -r requirements.txt`
-
+OR
+Run 
+1. `conda env create -f environment.yml`
+2. `conda activate hotprot`
 ## Steps Taken
 
 ### Dataset
