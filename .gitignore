@@ -3,3 +3,4 @@ HotProt.code-workspace
 esm-main
 datasets
 .venv
+__pycache__
