@@ -7,9 +7,7 @@ class HotInfer(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.esmfold = esm.pretrained.esmfold_v1()
-        self.esmfold = self.esmfold.eval().cuda()
         # cfg = self.esm.cfg
         # s_s shape torch.Size([1, sequence_len, 1024])
         # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
