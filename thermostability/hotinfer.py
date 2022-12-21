@@ -4,29 +4,51 @@ import esm
 
 
 class HotInfer(nn.Module):
-    def __init__(self, esmfold_config=None, **kwargs):
+    def __init__(self):
         super().__init__()
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.esmfold = esm.pretrained.esmfold_v1()
         self.esmfold = self.esmfold.eval().cuda()
         # cfg = self.esm.cfg
-        # s_s shape torch.Size([1, 124, 1024])
-        # s_z shape torch.Size([1, 124, 124, 128])
+        # s_s shape torch.Size([1, sequence_len, 1024])
+        # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
         
+        rnn_hidden_size = 128
+        rnn_hidden_layers = 2
+
+        thermo_module_rnn = torch.nn.RNN(input_size=1024,
+            hidden_size =rnn_hidden_size, 
+            num_layers =rnn_hidden_layers, 
+            nonlinearity="relu", 
+            batch_first =True,
+            bidirectional=False)
         
-        #self.thermo_module = nn.Sequential(
-        #    nn.LayerNorm(cfg.trunk.structure_module.c_s),
-        #    nn.Linear(cfg.trunk.structure_module.c_s, cfg.lddt_head_hid_dim),
-        #    nn.ReLU(),
-        #    nn.Linear(cfg.lddt_head_hid_dim, cfg.lddt_head_hid_dim),
-        #    nn.ReLU(),
-        #    nn.Linear(cfg.lddt_head_hid_dim, 37 * self.lddt_bins),
-        #    nn.ReLU(),
-        #    nn.Linear( 37 * self.lddt_bins,1 ))
+        thermo_module_regression = torch.nn.Sequential(
+            nn.Flatten(),
+            nn.LayerNorm(rnn_hidden_layers * rnn_hidden_size),
+            nn.Linear(rnn_hidden_layers * rnn_hidden_size, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, 16),
+            nn.ReLU(),
+            nn.Linear(16,1))
+            
+        self.thermo_module_rnn = thermo_module_rnn.to(self.device)
+        self.thermo_module_regression = thermo_module_regression.to(self.device)
+      
 
     def forward(self,
        sequence:str
         ):
         with torch.no_grad():
-            output = self.esmfold.infer(sequences=[sequence])
-        print("s_s",str(output["s_s"].size()))
-        print("s_z",str(output["s_z"].size()))
+            esm_output = self.esmfold.infer(sequences=[sequence])
+            s_s = esm_output["s_s"]
+
+            _, rnn_hidden = self.thermo_module_rnn(s_s)
+            
+            thermostability = self.thermo_module_regression(torch.transpose(rnn_hidden, 0,1))
+
+        return thermostability
+        
