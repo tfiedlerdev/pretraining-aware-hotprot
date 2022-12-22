@@ -1,2 +1,2 @@
-data/eval_sequences_copy.fasta filter=lfs diff=lfs merge=lfs -text
+data/eval_sequences.fasta filter=lfs diff=lfs merge=lfs -text
 data/train_sequences.fasta filter=lfs diff=lfs merge=lfs -text
