@@ -9,3 +9,4 @@ datasets
 data/*
 
 git-filter-repo.py
+git-lfs-3.2.0
