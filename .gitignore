@@ -7,3 +7,5 @@ datasets
 **__pycache__
 
 data/*
+
+git-filter-repo.py
