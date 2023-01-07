@@ -13,7 +13,7 @@ class HotInfer(nn.Module):
         # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
         
         rnn_hidden_size = 128
-        rnn_hidden_layers = 2
+        rnn_hidden_layers = 1
 
         self.thermo_module_rnn = torch.nn.RNN(input_size=1024,
             hidden_size =rnn_hidden_size, 
@@ -45,8 +45,7 @@ class HotInfer(nn.Module):
             s_s = esm_output["s_s"]
 
         _, rnn_hidden = self.thermo_module_rnn(s_s)
-            
         thermostability = self.thermo_module_regression(torch.transpose(rnn_hidden, 0,1))
-
+    
         return thermostability
         

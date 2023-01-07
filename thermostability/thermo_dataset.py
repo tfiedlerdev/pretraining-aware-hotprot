@@ -6,7 +6,7 @@ import pickle
 from IPython.display import clear_output, display
 
 class ThermostabilityDataset(Dataset):
-    def __init__(self, file_path: str, use_cache: bool = True) -> None:
+    def __init__(self, file_path: str, use_cache: bool = True, max_seq_len=-1, max_ds_len=-1) -> None:
         super().__init__()
         sequences = []
         melting_points = []
@@ -39,8 +39,15 @@ class ThermostabilityDataset(Dataset):
                 with open( cache_file, "wb" ) as f:
                     pickle.dump(self.thermo_dataframe, f)
 
+        if max_seq_len > 0: 
+            mask = self.thermo_dataframe.apply(lambda row: len(row['x']) <= max_seq_len, axis=1)
+            self.thermo_dataframe = self.thermo_dataframe[mask]
+        
+        self.max_ds_len = max_ds_len
+
+
     def __len__(self):
-        return 20#len(self.thermo_dataframe)
+        return len(self.thermo_dataframe) if self.max_ds_len > len(self.thermo_dataframe) else self.max_ds_len
 
     def __getitem__(self, index):
         if(torch.is_tensor(index)):
