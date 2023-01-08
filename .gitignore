@@ -10,3 +10,7 @@ data/*
 
 git-filter-repo.py
 git-lfs-3.2.0
+
+config.ini
+
+init-git-lfs.sh
