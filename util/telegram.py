@@ -31,26 +31,14 @@ class TelegramBot():
 
     def send_telegram(self,message: str) -> None:
         if not self.enabled:
-            return
-        packages_remaining = [message]
-        max_messages_num = 40
-        while len(packages_remaining) > 0 and max_messages_num > 0:
-            curr_package = packages_remaining.pop(0)
-            message_sent = self._fetch_send_message(curr_package)
-            if message_sent:
-                max_messages_num -= 1
-            if not message_sent:
-                if len(curr_package) < 10:
-                    self._fetch_send_message("Telegram failed")
-                    break
-                num_of_chars_first = math.ceil(len(curr_package) / 2)
-                first_package = curr_package[0:num_of_chars_first]
-                second_package = curr_package[num_of_chars_first : len(curr_package)]
+            return {"result": {"message_id": -1}}
+        return self._fetch_send_message(message)  
 
-                packages_remaining.insert(0, second_package)
-                packages_remaining.insert(0, first_package)
-        if max_messages_num == 0:
-            self._fetch_send_message("Sending failed. Too many messages sent.")
+    def edit_text_message(self,message_id: int,editedText: str) -> None:
+        if not self.enabled:
+            return
+        return self._fetch_edit_message(message_id,editedText)  
+        
 
 
     def _fetch_send_message(self, message: str) -> bool:
@@ -66,7 +54,24 @@ class TelegramBot():
 
         try:
             response = (requests.get(url)).json()
-            return response["ok"]
+            return response
+        except:
+            return False
+
+    def _fetch_edit_message(self, messageId: int, editedText: str):
+        url = (
+            "https://api.telegram.org/bot"
+            + self.botKey
+            + "/editMessageText?chat_id="
+            + self.chatId
+            + "&message_id="+str(messageId)
+            + "&text="
+            + quote(editedText)
+        )
+
+        try:
+            response = (requests.get(url)).json()
+            return response
         except:
             return False
 
