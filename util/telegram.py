@@ -20,8 +20,8 @@ class TelegramBot():
 
         self.enabled = True
 
-        self.chatId = self.config["ChatId"]
-        self.botKey = self.config["BotKey"]
+        self.chatId = self.config["telegram"]["ChatId"]
+        self.botKey = self.config["telegram"]["BotKey"]
         if "[" in self.chatId or "[" in self.botKey:
             raise Exception("Invalid format of ChatId or BotKey field in {configFile}")
 

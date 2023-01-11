@@ -4,6 +4,7 @@ import torch
 import os
 import pickle
 from IPython.display import clear_output, display
+import sys
 
 class ThermostabilityDataset(Dataset):
     def __init__(self, file_path: str, use_cache: bool = True, max_seq_len=-1, max_ds_len=-1) -> None:
@@ -43,7 +44,7 @@ class ThermostabilityDataset(Dataset):
             mask = self.thermo_dataframe.apply(lambda row: len(row['x']) <= max_seq_len, axis=1)
             self.thermo_dataframe = self.thermo_dataframe[mask]
         
-        self.max_ds_len = max_ds_len
+        self.max_ds_len = max_ds_len if max_ds_len != -1 else sys.maxsize
 
 
     def __len__(self):
