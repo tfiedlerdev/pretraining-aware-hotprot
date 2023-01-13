@@ -17,6 +17,8 @@ RUN sudo dpkg -i cuda-repo-ubuntu1804-10-2-local-10.2.89-440.33.01_1.0-1_amd64.d
 RUN sudo apt-key add /var/cuda-repo-10-2-local-10.2.89-440.33.01/7fa2af80.pub
 RUN sudo apt-get update
 RUN sudo DEBIAN_FRONTEND=noninteractive apt-get -y install cuda
-RUN git clone https://github.com/LeonHermann322/hot-prot.git
+#RUN git clone https://github.com/LeonHermann322/hot-prot.git
 RUN pip install torch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1
-RUN pip install -r hot-prot/requirements.txt
+ADD . .
+RUN pip install -r requirements.txt
+ENTRYPOINT [ "python", "train.py" ]
