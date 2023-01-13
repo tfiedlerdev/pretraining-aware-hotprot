@@ -5,6 +5,7 @@ numpy
 scikit-learn
 mlflow
 optuna
+tqdm
 matplotlib
 fair-esm
 fair-esm[esmfold]
