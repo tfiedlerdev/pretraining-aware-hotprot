@@ -1,4 +1,12 @@
 torch==1.12.1
+pandas
+requests
+numpy
+scikit-learn
+mlflow
+optuna
+tqdm
+matplotlib
 fair-esm
 fair-esm[esmfold]
 dllogger @ git+https://github.com/NVIDIA/dllogger.git
