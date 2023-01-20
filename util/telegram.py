@@ -71,8 +71,10 @@ class TelegramBot():
 
         try:
             response = (requests.get(url)).json()
+        
             return response
-        except:
+        except Exception as e:
+            print("Exception while decodin response from editing telegram message")
             return False
 
     def _fetch_send_photo(self,filePath: str, caption: str = None) -> bool:
