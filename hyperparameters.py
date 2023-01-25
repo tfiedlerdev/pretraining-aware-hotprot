@@ -1,4 +1,6 @@
 import torch
+from torch.utils.data import DataLoader
+from torch.nn.functional import pad
 import optuna
 import time
 import copy
@@ -9,7 +11,9 @@ from pathlib import Path
 import mlflow
 from optuna.integration.mlflow import MLflowCallback
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
-from thermostability.hotinfer import HotInfer
+from thermostability.hotinfer_pregenerated import HotInferPregenerated
+from tqdm.notebook import tqdm
+import sys
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -24,15 +28,28 @@ torch.cuda.list_gpu_processes()
 train_ds = ThermostabilityPregeneratedDataset('data/s_s/train')
 eval_ds = ThermostabilityPregeneratedDataset('data/s_s/eval')
 
+def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
+    max_size = 0
+    for s_s, temp in s_s_list:
+        size = s_s.size(1)
+        if size > max_size:
+            max_size = size
+
+    padded_s_s = []
+    for s_s, temp in s_s_list:
+        dif = max_size - s_s.size(1) 
+        padded = pad(s_s, (0,0,dif,0), "constant", 0)
+        padded_s_s.append(padded, temp)
+
+    return torch.stack(padded_s_s, 0)
+
 dataloaders = {
-    "train": torch.utils.data.DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4),
-    "val": torch.utils.data.DataLoader(eval_ds, batch_size=32, shuffle=True, num_workers=4)
+    "train": DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding),
+    "val": DataLoader(eval_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding)
 }
 
 dataset_sizes = {"train": len(train_ds),"val": len(eval_ds)}
 
-from tqdm.notebook import tqdm
-import sys
 
 def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
     since = time.time()
@@ -156,7 +173,7 @@ def optimize_thermostability(trial):
     return score
 
 # minimize or maximize
-study = optuna.create_study(direction="minimize", study_name="thermostability-hyperparameter-optimization") # maximise the score during tuning
+study = optuna.create_study(direction="maximize", study_name="thermostability-hyperparameters") # maximise the score during tuning
 study.optimize(optimize_thermostability, n_trials=100) # run the objective function 100 times
 
 print(study.best_trial) # print the best performing pipeline
