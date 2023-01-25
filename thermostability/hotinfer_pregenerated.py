@@ -13,10 +13,9 @@ class HotInferPregenerated(nn.Module):
         rnn_hidden_size = hidden_size
         rnn_hidden_layers = hidden_layers
 
-        self.thermo_module_rnn = torch.nn.RNN(input_size=1024,
+        self.thermo_module_rnn = torch.nn.LSTM(input_size=1024,
             hidden_size =rnn_hidden_size, 
-            num_layers =rnn_hidden_layers, 
-            nonlinearity="relu", 
+            num_layers =rnn_hidden_layers,
             batch_first =True,
             bidirectional=False)
         
@@ -34,8 +33,8 @@ class HotInferPregenerated(nn.Module):
       
 
     def forward(self, s_s: torch.Tensor):
-        _, rnn_hidden = self.thermo_module_rnn(s_s)
-        thermostability = self.thermo_module_regression(torch.transpose(rnn_hidden, 0,1))
+        output, (hidden, final) = self.thermo_module_rnn(s_s)
+        thermostability = self.thermo_module_regression(torch.transpose(hidden, 0,1))
     
         return thermostability
         

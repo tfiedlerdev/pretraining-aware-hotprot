@@ -9,18 +9,22 @@ import csv
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
-    def __init__(self, dir_path: str, limit: int = 100000) -> None:
+    def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000) -> None:
         super().__init__()
-        self.dir_path = dir_path
-        labelsFilePath = os.path.join(dir_path, "labels.csv")
-        if not os.path.exists(labelsFilePath):
-            raise Exception(f"{labelsFilePath} does not exist.")
+
+        dsFilePath = os.path.join("data/s_s/", dataset_filename)
+        if not os.path.exists(dsFilePath):
+            raise Exception(f"{dsFilePath} does not exist.")
+
+        with open("data/s_s/sequences.csv", newline='\n') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
+            self.sequenceToFilename = {sequence: filename for (i, (sequence, filename)) in enumerate(spamreader) if i!=0}
 
         self.limit=limit
-        with open(labelsFilePath, newline='\n') as csvfile:
+        with open(dsFilePath, newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
-            self.filename_thermo_seq = [row for (i, row) in enumerate(spamreader) if i!=0]
-
+            self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (i, (seq, thermo)) in enumerate(spamreader) if i!=0]
+        self.sequences_dir = "data/s_s"
 
     def __len__(self):
         return min(len(self.filename_thermo_seq), self.limit)
@@ -28,7 +32,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]
         
-        with open(os.path.join(self.dir_path, filename), "rb") as f:
+        with open(os.path.join(self.sequences_dir, filename), "rb") as f:
             s_s = torch.load(f) 
 
         return s_s, torch.tensor(float(thermo), dtype=torch.float32)
