@@ -17,9 +17,6 @@ class HotInfer(nn.Module):
         # cfg = self.esm.cfg
         # s_s shape torch.Size([1, sequence_len, 1024])
         # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
-        
-        rnn_hidden_size = 128
-        rnn_hidden_layers = 1
 
         self.thermo_module_rnn = torch.nn.RNN(input_size=1024,
             hidden_size =rnn_hidden_size, 
