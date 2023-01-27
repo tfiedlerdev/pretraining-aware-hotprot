@@ -31,17 +31,18 @@ eval_ds = ThermostabilityPregeneratedDataset('data/s_s/eval')
 def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     max_size = 0
     for s_s, temp in s_s_list:
-        size = s_s.size(1)
+        size = s_s.size(0)
         if size > max_size:
             max_size = size
 
     padded_s_s = []
+    temps =[]
     for s_s, temp in s_s_list:
-        dif = max_size - s_s.size(1) 
+        dif = max_size - s_s.size(0) 
         padded = pad(s_s, (0,0,dif,0), "constant", 0)
-        padded_s_s.append(padded, temp)
-
-    return torch.stack(padded_s_s, 0)
+        padded_s_s.append(padded)
+        temps.append(temp)
+    return torch.stack(padded_s_s, 0), torch.stack(temps)
 
 dataloaders = {
     "train": DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding),
@@ -144,7 +145,7 @@ mlflc = MLflowCallback(
 @mlflc.track_in_mlflow()
 def optimize_thermostability(trial):    
     params = {
-        'model_learning_rate': trial.suggest_float('model_learning_rate', 0.001, 0.501, step=0.05),
+        'model_learning_rate': trial.suggest_float('model_learning_rate', 0.01, 0.75, step=0.05),
         'model_hidden_units': trial.suggest_int('model_hidden_units', 64, 640, step=64),
         'model_hidden_layers': trial.suggest_int('model_hidden_layers', 1, 4, step=1)
     }
