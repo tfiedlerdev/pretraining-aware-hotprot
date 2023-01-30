@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import DataLoader
-from torch.nn.functional import pad
 import optuna
 import time
 import copy
@@ -14,6 +13,7 @@ from thermostability.thermo_pregenerated_dataset import ThermostabilityPregenera
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedLSTM
 from tqdm.notebook import tqdm
 import sys
+from thermostability.thermo_pregenerated_dataset import zero_padding
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -27,22 +27,6 @@ torch.cuda.list_gpu_processes()
 
 train_ds = ThermostabilityPregeneratedDataset('train.csv')
 eval_ds = ThermostabilityPregeneratedDataset('val.csv')
-
-def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
-    max_size = 0
-    for s_s, temp in s_s_list:
-        size = s_s.size(0)
-        if size > max_size:
-            max_size = size
-
-    padded_s_s = []
-    temps =[]
-    for s_s, temp in s_s_list:
-        dif = max_size - s_s.size(0) 
-        padded = pad(s_s, (0,0,dif,0), "constant", 0)
-        padded_s_s.append(padded)
-        temps.append(temp)
-    return torch.stack(padded_s_s, 0), torch.stack(temps)
 
 
 dataloaders = {

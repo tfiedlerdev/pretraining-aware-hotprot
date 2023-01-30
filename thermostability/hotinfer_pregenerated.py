@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from typing import List
+
 
 class HotInferPregeneratedLSTM(nn.Module):
     def __init__(self, hidden_size, hidden_layers):

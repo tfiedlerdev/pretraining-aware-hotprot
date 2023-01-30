@@ -5,6 +5,20 @@ import os
 import pickle
 import sys
 import csv
+from typing import List, Union
+from torch.nn.functional import pad
+
+def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size: Union[int, None]=None):
+    max_size = fixed_size if fixed_size else max([s_s.size(0) for s_s, _ in s_s_list])
+
+    padded_s_s = []
+    temps =[]
+    for s_s, temp in s_s_list:
+        dif = max_size - s_s.size(0) 
+        padded = pad(s_s, (0,0,dif,0), "constant", 0)
+        padded_s_s.append(padded)
+        temps.append(temp)
+    return torch.stack(padded_s_s, 0), torch.stack(temps)
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
