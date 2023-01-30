@@ -13,7 +13,7 @@ import time
 import os
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
 from util.telegram import TelegramBot
-from thermostability.hotinfer_pregenerated import HotInferPregenerated
+from thermostability.hotinfer_pregenerated import HotInferPregeneratedLSTM
 from datetime import datetime
 
 cudnn.benchmark = True
@@ -41,7 +41,7 @@ dataset_sizes = {"train": len(trainSet),"val": len(valSet)}
 print(dataset_sizes)
 print(next(enumerate(dataloaders["train"])))
 
-model = HotInferPregenerated()
+model = HotInferPregeneratedLSTM()
 
 model.to(device)
 
