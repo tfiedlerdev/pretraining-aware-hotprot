@@ -22,7 +22,11 @@ class ThermostabilityPregeneratedDataset(Dataset):
         self.limit=limit
         with open(dsFilePath, newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
-            self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (i, (seq, thermo)) in enumerate(spamreader) if i!=0]
+            seq_thermos = [(seq,thermo) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0]
+        
+            self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
+            diff = len(seq_thermos)-len(self.filename_thermo_seq)  
+            print(f"Omitted {diff} sequences of {dataset_filename} because they have not been pregenerated")
         self.sequences_dir = "data/s_s"
 
     def __len__(self):
