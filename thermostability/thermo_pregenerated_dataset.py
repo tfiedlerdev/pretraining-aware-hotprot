@@ -20,6 +20,9 @@ def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size
         temps.append(temp)
     return torch.stack(padded_s_s, 0), torch.stack(temps)
 
+def zero_padding700(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
+    return zero_padding(s_s_list, 700)
+
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
     def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000) -> None:
