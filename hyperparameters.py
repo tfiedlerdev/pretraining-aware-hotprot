@@ -7,13 +7,13 @@ from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
 from pathlib import Path
-import mlflow
-from optuna.integration.mlflow import MLflowCallback
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
-from thermostability.hotinfer_pregenerated import HotInferPregeneratedLSTM
+from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from tqdm.notebook import tqdm
 import sys
-from thermostability.thermo_pregenerated_dataset import zero_padding
+from thermostability.thermo_pregenerated_dataset import zero_padding, zero_padding700
+import wandb
+import argparse
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -30,8 +30,8 @@ eval_ds = ThermostabilityPregeneratedDataset('val.csv')
 
 
 dataloaders = {
-    "train": DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding),
-    "val": DataLoader(eval_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding)
+    "train": DataLoader(train_ds, batch_size=16, shuffle=True, num_workers=4, collate_fn=zero_padding700),
+    "val": DataLoader(eval_ds, batch_size=16, shuffle=True, num_workers=4, collate_fn=zero_padding700)
 }
 
 dataset_sizes = {"train": len(train_ds),"val": len(eval_ds)}
@@ -111,14 +111,14 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
 
             epoch_loss = running_loss / dataset_sizes[phase]
 
-
+            
             print(f'{phase} Loss: {epoch_loss:.4f}')
 
             # deep copy the model
             if phase == 'val' and epoch_loss < best_epoch_loss:
                 best_epoch_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
-
+                wandb.log({"mse_loss": epoch_loss})
         print()
 
 
@@ -129,41 +129,29 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
     model.load_state_dict(best_model_wts)
     return model, best_epoch_loss
 
-YOUR_TRACKING_URI = "http://127.0.0.1:5000"
-mlflc = MLflowCallback(
-    tracking_uri=YOUR_TRACKING_URI,
-    metric_name="metric_score"
-)
-@mlflc.track_in_mlflow()
-def optimize_thermostability(trial):    
-    params = {
-        'model_learning_rate': trial.suggest_float('model_learning_rate', 0.01, 0.75, step=0.05),
-        'model_hidden_units': trial.suggest_int('model_hidden_units', 64, 640, step=64),
-        'model_hidden_layers': trial.suggest_int('model_hidden_layers', 1, 4, step=1)
-    }
-    
-    model = HotInferPregeneratedLSTM(
-        params['model_hidden_units'],
-        params['model_hidden_layers'],
-    )
-    model.to(device)
-    
-    criterion = nn.MSELoss()
+def run_train_experiment(config: dict = None):
+    with wandb.init(config=config):
+        config = wandb.config
+        model = HotInferPregeneratedFC(num_hidden_layers=config['model_hidden_layers'], first_hidden_size=config['model_first_hidden_units'])
+        model.to(device)
+        wandb.watch(model)
+        criterion = nn.MSELoss()
 
-    optimizer_ft = torch.optim.SGD(model.parameters(), lr=params['model_learning_rate'], momentum=0.9)
-    
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
+        optimizer_ft = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
 
-    model, score = train_model(model, optimizer_ft, criterion, exp_lr_scheduler, num_epochs=1)
+        exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-    mlflow.log_params(params)
-    mlflow.pytorch.log_model(model, "model")
-    # candidate_model_uri = mlflow.pytorch.log_model(model).model_uri
-    mlflow.log_metric("score", score)
-    return score
+        model, score = train_model(model, optimizer_ft, criterion, exp_lr_scheduler, num_epochs=config["epochs"])
 
-# minimize or maximize
-study = optuna.create_study(direction="minimize", study_name="thermostability-hyperparameters") # maximise the score during tuning
-study.optimize(optimize_thermostability, n_trials=20) # run the objective function 100 times
+        return score
 
-print(study.best_trial) # print the best performing pipeline
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--learning_rate", type=float, required=True)
+    parser.add_argument("--model_hidden_layers", type=float, required=True)
+    parser.add_argument("--model_first_hidden_units", type=float, required=True)
+    parser.add_argument("--epochs", type=float, required=True)
+    args = parser.parse_args()
+
+    run_train_experiment(config=vars(args))
