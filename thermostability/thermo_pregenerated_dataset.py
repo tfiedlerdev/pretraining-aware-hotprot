@@ -18,7 +18,8 @@ def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size
         padded = pad(s_s, (0,0,dif,0), "constant", 0)
         padded_s_s.append(padded)
         temps.append(temp)
-    return torch.stack(padded_s_s, 0), torch.stack(temps)
+    results= torch.stack(padded_s_s, 0).unsqueeze(1), torch.stack(temps)
+    return results
 
 def zero_padding700(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     return zero_padding(s_s_list, 700)

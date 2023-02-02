@@ -9,6 +9,7 @@ from torch.optim import lr_scheduler
 from pathlib import Path
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
+from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
 from tqdm.notebook import tqdm
 import sys
 from thermostability.thermo_pregenerated_dataset import zero_padding, zero_padding700
@@ -132,7 +133,7 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
 def run_train_experiment(config: dict = None):
     with wandb.init(config=config):
         config = wandb.config
-        model = HotInferPregeneratedFC(num_hidden_layers=config['model_hidden_layers'], first_hidden_size=config['model_first_hidden_units'])
+        model = CNNPregeneratedFC(num_hidden_layers=config['model_hidden_layers'], first_hidden_size=config['model_first_hidden_units'])
         model.to(device)
         wandb.watch(model)
         criterion = nn.MSELoss()
@@ -149,9 +150,9 @@ def run_train_experiment(config: dict = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--learning_rate", type=float, required=True)
-    parser.add_argument("--model_hidden_layers", type=float, required=True)
-    parser.add_argument("--model_first_hidden_units", type=float, required=True)
-    parser.add_argument("--epochs", type=float, required=True)
+    parser.add_argument("--model_hidden_layers", type=int, required=True)
+    parser.add_argument("--model_first_hidden_units", type=int, required=True)
+    parser.add_argument("--epochs", type=int, required=True)
     args = parser.parse_args()
 
     run_train_experiment(config=vars(args))
