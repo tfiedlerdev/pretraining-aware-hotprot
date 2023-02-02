@@ -19,3 +19,5 @@ parameters:
     values: [16]
   optimizer: 
     values: ["sgd"]
+  model: 
+    values: ["cnn"]
