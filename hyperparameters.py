@@ -11,6 +11,7 @@ from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
 )
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
+from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
 from tqdm.notebook import tqdm
 import sys
 from thermostability.thermo_pregenerated_dataset import zero_padding, zero_padding700
@@ -97,7 +98,12 @@ def train_model(
                 )
 
                 running_loss += batch_loss
-                mean_abs_diff = torch.abs(outputs.squeeze().sub(labels.squeeze())).squeeze().mean().item()
+                mean_abs_diff = (
+                    torch.abs(outputs.squeeze().sub(labels.squeeze()))
+                    .squeeze()
+                    .mean()
+                    .item()
+                )
                 wandb.log({"mean_abs_diff": mean_abs_diff})
                 if idx % 1 == 0:
                     tqdm.write(
@@ -133,8 +139,8 @@ def train_model(
     model.load_state_dict(best_model_wts)
     artifact = wandb.Artifact("results", type="train")
     pl.scatter(
-        allPredictions.squeeze().tolist()[-dataset_sizes["val"]:],
-        allLabels.squeeze().tolist()[-dataset_sizes["val"]:],
+        allPredictions.squeeze().tolist()[-dataset_sizes["val"] :],
+        allLabels.squeeze().tolist()[-dataset_sizes["val"] :],
     )
     plotPath = f"results/predictions.png"
     pl.xlabel("Predictions")
@@ -174,9 +180,16 @@ def run_train_experiment(config: dict = None):
 
         dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
         config = wandb.config
-        model = HotInferPregeneratedFC(
-            num_hidden_layers=config["model_hidden_layers"],
-            first_hidden_size=config["model_first_hidden_units"],
+        model = (
+            HotInferPregeneratedFC(
+                num_hidden_layers=config["model_hidden_layers"],
+                first_hidden_size=config["model_first_hidden_units"],
+            )
+            if config["model"] == "fc"
+            else CNNPregeneratedFC(
+                num_hidden_layers=config["model_hidden_layers"],
+                first_hidden_size=config["model_first_hidden_units"],
+            )
         )
         model.to(device)
         wandb.watch(model)
@@ -185,7 +198,9 @@ def run_train_experiment(config: dict = None):
         optimizer_ft = (
             torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
             if config["optimizer"] == "adam"
-            else torch.optim.SGD(model.parameters(), lr=config["learning_rate"], momentum = 0.9)
+            else torch.optim.SGD(
+                model.parameters(), lr=config["learning_rate"], momentum=0.9
+            )
         )
 
         exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=20, gamma=0.9)
@@ -212,6 +227,8 @@ if __name__ == "__main__":
     parser.add_argument("--val_on_trainset", type=bool)
     parser.add_argument("--dataset_limit", type=int)
     parser.add_argument("--optimizer", type=str)
+    parser.add_argument("--mode", type=str)
+    parser.add_argument("--model", type=str)
     args = parser.parse_args()
 
     run_train_experiment(config=vars(args))
