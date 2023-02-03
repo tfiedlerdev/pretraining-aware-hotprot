@@ -31,7 +31,7 @@ torch.cuda.list_gpu_processes()
 
 
 def train_model(
-    model, optimizer, criterion, scheduler, dataloaders, dataset_sizes, num_epochs=25
+    model, optimizer, criterion, scheduler, dataloaders, dataset_sizes, use_wandb, num_epochs=25
 ):
     since = time.time()
 
@@ -40,12 +40,13 @@ def train_model(
     best_epoch_loss = sys.float_info.max
     losses = []
     batchEnumeration = []
-    allPredictions = torch.tensor([])
-    allLabels = torch.tensor([])
+    bestEpochPredictions = torch.tensor([])
+    bestEpochLabels = torch.tensor([])
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}/{num_epochs - 1}")
         print("-" * 10)
-
+        currentEpochPredictions = torch.tensor([])
+        currentEpochLabels = torch.tensor([])
         # Each epoch has a training and validation phase
         for phase in ["train", "val"]:
             if phase == "train":
@@ -70,10 +71,10 @@ def train_model(
                     loss = criterion(outputs, torch.unsqueeze(labels, 1))
 
                     if phase == "val":
-                        allPredictions = torch.cat(
-                            (allPredictions, torch.squeeze(outputs.cpu()))
+                        currentEpochPredictions = torch.cat(
+                            (currentEpochPredictions, outputs.cpu())
                         )
-                        allLabels = torch.cat((allLabels, torch.squeeze(labels.cpu())))
+                        currentEpochLabels = torch.cat((currentEpochLabels, labels.cpu()))
                     # backward + optimize only if in training phase
                     if phase == "train":
 
@@ -104,7 +105,8 @@ def train_model(
                     .mean()
                     .item()
                 )
-                wandb.log({"mean_abs_diff": mean_abs_diff})
+                if use_wandb:
+                    wandb.log({"mean_abs_diff": mean_abs_diff})
                 if idx % 1 == 0:
                     tqdm.write(
                         "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, batch abs diff mean {:.6f}".format(
@@ -129,7 +131,10 @@ def train_model(
             if phase == "val" and epoch_loss < best_epoch_loss:
                 best_epoch_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
-                wandb.log({"mse_loss": epoch_loss})
+                if use_wandb:
+                    wandb.log({"mse_loss": epoch_loss})
+                bestEpochLabels = currentEpochLabels
+                bestEpochPredictions = currentEpochPredictions
         print()
 
     time_elapsed = time.time() - since
@@ -137,85 +142,83 @@ def train_model(
     print(f"Best val Acc: {best_epoch_loss:4f}")
     # load best model weights
     model.load_state_dict(best_model_wts)
-    artifact = wandb.Artifact("results", type="train")
+    
     pl.scatter(
-        allPredictions.squeeze().tolist()[-dataset_sizes["val"] :],
-        allLabels.squeeze().tolist()[-dataset_sizes["val"] :],
+        bestEpochPredictions.squeeze().tolist(),
+        bestEpochLabels.squeeze().tolist()
     )
     plotPath = f"results/predictions.png"
+    pl.title(f"Loss: {best_epoch_loss}")
     pl.xlabel("Predictions")
     pl.ylabel("Labels")
     pl.savefig(plotPath)
-    artifact.add_file(plotPath)
-    wandb.log_artifact(artifact)
+    if use_wandb:
+        artifact = wandb.Artifact("results", type="train")
+        artifact.add_file(plotPath)
+        wandb.log_artifact(artifact)
     return model, best_epoch_loss
 
 
-def run_train_experiment(config: dict = None):
-    with wandb.init(config=config):
-        train_ds = ThermostabilityPregeneratedDataset(
-            "train.csv", limit=config["dataset_limit"]
+def run_train_experiment(config: dict = None, use_wandb = True):
+    train_ds = ThermostabilityPregeneratedDataset(
+        "train.csv", limit=config["dataset_limit"]
+    )
+    eval_ds = ThermostabilityPregeneratedDataset(
+        "train.csv" if config["val_on_trainset"] else "val.csv",
+        limit=config["dataset_limit"],
+    )
+    dataloaders = {
+        "train": DataLoader(
+            train_ds,
+            batch_size=config["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            collate_fn=zero_padding700,
+        ),
+        "val": DataLoader(
+            eval_ds,
+            batch_size=config["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            collate_fn=zero_padding700,
+        ),
+    }
+    dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
+    
+    model = (
+        HotInferPregeneratedFC(
+            num_hidden_layers=config["model_hidden_layers"],
+            first_hidden_size=config["model_first_hidden_units"],
         )
-        eval_ds = ThermostabilityPregeneratedDataset(
-            "train.csv" if config["val_on_trainset"] else "val.csv",
-            limit=config["dataset_limit"],
+        if config["model"] == "fc"
+        else CNNPregeneratedFC(
+            num_hidden_layers=config["model_hidden_layers"],
+            first_hidden_size=config["model_first_hidden_units"],
         )
-
-        dataloaders = {
-            "train": DataLoader(
-                train_ds,
-                batch_size=2,
-                shuffle=True,
-                num_workers=4,
-                collate_fn=zero_padding700,
-            ),
-            "val": DataLoader(
-                eval_ds,
-                batch_size=2,
-                shuffle=True,
-                num_workers=4,
-                collate_fn=zero_padding700,
-            ),
-        }
-
-        dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
-        config = wandb.config
-        model = (
-            HotInferPregeneratedFC(
-                num_hidden_layers=config["model_hidden_layers"],
-                first_hidden_size=config["model_first_hidden_units"],
-            )
-            if config["model"] == "fc"
-            else CNNPregeneratedFC(
-                num_hidden_layers=config["model_hidden_layers"],
-                first_hidden_size=config["model_first_hidden_units"],
-            )
-        )
-        model.to(device)
+    )
+    model.to(device)
+    if use_wandb:
         wandb.watch(model)
-        criterion = nn.MSELoss()
-
-        optimizer_ft = (
-            torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
-            if config["optimizer"] == "adam"
-            else torch.optim.SGD(
-                model.parameters(), lr=config["learning_rate"], momentum=0.9
-            )
+    criterion = nn.MSELoss()
+    optimizer_ft = (
+        torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+        if config["optimizer"] == "adam"
+        else torch.optim.SGD(
+            model.parameters(), lr=config["learning_rate"], momentum=0.9
         )
-
-        exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=20, gamma=0.9)
-
-        model, score = train_model(
-            model,
-            optimizer_ft,
-            criterion,
-            exp_lr_scheduler,
-            dataloaders,
-            dataset_sizes,
-            num_epochs=config["epochs"],
-        )
-
-        return score
+    )
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
+    model, score = train_model(
+        model,
+        optimizer_ft,
+        criterion,
+        exp_lr_scheduler,
+        dataloaders,
+        dataset_sizes,
+        use_wandb,
+        num_epochs=config["epochs"],
+    )
+    return score
 
 
 if __name__ == "__main__":
@@ -227,8 +230,16 @@ if __name__ == "__main__":
     parser.add_argument("--val_on_trainset", type=bool)
     parser.add_argument("--dataset_limit", type=int)
     parser.add_argument("--optimizer", type=str)
-    parser.add_argument("--mode", type=str)
+    parser.add_argument("--batch_size", type=int)
     parser.add_argument("--model", type=str)
+    parser.add_argument("--no_wandb", action='store_true')
     args = parser.parse_args()
 
-    run_train_experiment(config=vars(args))
+    argsDict = vars(args)
+    use_wandb = not argsDict["no_wandb"]
+    del argsDict["no_wandb"]
+    if use_wandb:
+        with wandb.init(config=argsDict):
+            run_train_experiment(config=wandb.config, use_wandb=True)
+    else: 
+        run_train_experiment(config=argsDict, use_wandb=False)

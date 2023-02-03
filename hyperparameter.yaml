@@ -21,3 +21,5 @@ parameters:
     values: ["sgd"]
   model: 
     values: ["cnn"]
+  batch_size: 
+    values: [2]
