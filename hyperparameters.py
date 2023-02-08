@@ -14,7 +14,7 @@ from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
 from tqdm.notebook import tqdm
 import sys
-from thermostability.thermo_pregenerated_dataset import zero_padding, zero_padding700
+from thermostability.thermo_pregenerated_dataset import zero_padding_collate, zero_padding700_collate
 import wandb
 import argparse
 import pylab as pl
@@ -173,14 +173,14 @@ def run_train_experiment(config: dict = None, use_wandb = True):
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700,
+            collate_fn=zero_padding700_collate,
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700,
+            collate_fn=zero_padding700_collate,
         ),
     }
     dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}

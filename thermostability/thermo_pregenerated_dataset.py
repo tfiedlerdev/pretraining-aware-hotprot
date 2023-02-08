@@ -8,21 +8,27 @@ import csv
 from typing import List, Union
 from torch.nn.functional import pad
 
-def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size: Union[int, None]=None):
+def zero_padding(single_repr: torch.Tensor, len: int) -> torch.Tensor:
+    dif = len - single_repr.size(0) 
+    return pad(single_repr, (0,0,dif,0), "constant", 0)
+
+def zero_padding_700(single_repr: torch.Tensor) -> torch.Tensor:
+    return zero_padding(single_repr, 700) 
+
+def zero_padding_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size: Union[int, None]=None):
     max_size = fixed_size if fixed_size else max([s_s.size(0) for s_s, _ in s_s_list])
 
     padded_s_s = []
     temps =[]
     for s_s, temp in s_s_list:
-        dif = max_size - s_s.size(0) 
-        padded = pad(s_s, (0,0,dif,0), "constant", 0)
+        padded = zero_padding(s_s, max_size)
         padded_s_s.append(padded)
         temps.append(temp)
     results= torch.stack(padded_s_s, 0).unsqueeze(1), torch.stack(temps)
     return results
 
-def zero_padding700(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
-    return zero_padding(s_s_list, 700)
+def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
+    return zero_padding_collate(s_s_list, 700)
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):

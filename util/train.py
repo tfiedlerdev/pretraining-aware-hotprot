@@ -11,9 +11,8 @@ from typing import Callable
 
 def train_model(
     model,
-    optimizer: torch.optim.Optimizer,
-    criterion,
-    scheduler,
+    criterion: nn.modules.loss._Loss,
+    scheduler: torch.optim.lr_scheduler._LRScheduler,
     dataloaders,
     dataset_sizes,
     use_wandb,
@@ -23,6 +22,7 @@ def train_model(
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
 ):
+    optimizer = scheduler.optimizer
     since = time.time()
     best_model_path = "results/best_model.pt"
     if return_best_model:
@@ -49,6 +49,7 @@ def train_model(
 
             # Iterate over data.
             for idx, (inputs, labels) in enumerate(dataloaders[phase]):
+               
                 inputs = prepare_inputs(inputs)
                 labels = prepare_labels(labels)
 
@@ -85,7 +86,7 @@ def train_model(
                                 f"Nan loss: {torch.isnan(loss)}| Loss: {loss}| inputs: {inputs}"
                             )
                 # statistics
-                batch_size = inputs.size(0)
+                batch_size = len(inputs)
                 batch_loss = loss.item() * batch_size
                 losses.append(batch_loss)
                 batchEnumeration.append(
@@ -142,11 +143,14 @@ def train_model(
     pl.scatter(
         bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
     )
-    plotPath = f"results/predictions.png"
+    train_size =dataset_sizes["train"]
+    val_size = dataset_sizes["val"]
+    plotPath = f"results/predictions_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
     pl.title(f"Loss: {best_epoch_loss}")
     pl.xlabel("Predictions")
     pl.ylabel("Labels")
     pl.savefig(plotPath)
+    print(f"Saved predictions as scatter plot at {plotPath}")
     if use_wandb:
         artifact = wandb.Artifact("results", type="train")
         artifact.add_file(plotPath)

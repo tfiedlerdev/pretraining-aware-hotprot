@@ -1,0 +1,3 @@
+[submodule "esm_custom"]
+	path = esm_custom
+	url = https://github.com/tfiedlerdev/esm-hotprot.git

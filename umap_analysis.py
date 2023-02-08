@@ -38,10 +38,11 @@ def main() :
    
     flattened_tensors = None
     temps = None
-    i = 0
+
+    limit = 2000
     dataset='train'
-    for batch in dataloaders[dataset]:
-        if i >= 2000:
+    for i,batch in enumerate(dataloaders[dataset]):
+        if i >= limit:
             break
         flat_tensor = batch[0].flatten().numpy()
         temp = batch[1].numpy()
@@ -51,9 +52,10 @@ def main() :
         else:
             flattened_tensors= numpy.append(flattened_tensors, [flat_tensor], axis= 0)
             temps = numpy.append(temps, [temp])
-        i +=1
+        
     print(flattened_tensors.shape)
-    reducer = umap.UMAP(n_components=3, random_state=42)
+    useDensmap =True
+    reducer = umap.UMAP(n_components=3, random_state=42, densmap=useDensmap)
     reducer.fit(flattened_tensors, temps)
     embedding = reducer.transform(flattened_tensors)
     print(embedding.shape)
@@ -61,7 +63,7 @@ def main() :
     ax = fig.add_subplot(projection='3d')
 
     ax.scatter(embedding[:, 0], embedding[:, 1],embedding[:,2], c = temps, s=5)
-    plt.savefig(f"results/umap_analysis_{dataset}.png")
+    plt.savefig(f"results/figures/umap_analysis_{dataset}_densemap{useDensmap}_limit{limit}.png")
     plt.show()
    
     
