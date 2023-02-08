@@ -76,7 +76,9 @@ class HotInferModelParallel(nn.Module):
         self.thermo_module = thermo_module.to("cuda:1")
 
         self.representation_key = representation_key
-        self.meta_filepath = f"data/model_parallel_{representation_key}_meta.pickle"
+        meta_dir = f"data/{representation_key}"
+        os.makedirs(meta_dir, exist_ok=True)
+        self.meta_filepath = os.path.join(meta_dir, "meta.pickle")
         if os.path.exists(self.meta_filepath):
             with open(self.meta_filepath, "rb") as f:
                 self.meta = pickle.load(f)
