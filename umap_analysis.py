@@ -31,7 +31,7 @@ def main() :
     valSet = ThermostabilityPregeneratedDataset("val.csv")
 
     dataloaders = {
-    "train": DataLoader(trainSet, batch_size=1, shuffle=True, num_workers=0),
+    "train": DataLoader(trainSet, batch_size=1, shuffle=True, num_workers=0, collate_fn= zero_padding700),
     "val": DataLoader(valSet, batch_size=1, shuffle=False, num_workers=0, collate_fn= zero_padding700)
     }
 
@@ -39,7 +39,8 @@ def main() :
     flattened_tensors = None
     temps = None
     i = 0
-    for batch in dataloaders['val']:
+    dataset='train'
+    for batch in dataloaders[dataset]:
         if i >= 2000:
             break
         flat_tensor = batch[0].flatten().numpy()
@@ -60,7 +61,9 @@ def main() :
     ax = fig.add_subplot(projection='3d')
 
     ax.scatter(embedding[:, 0], embedding[:, 1],embedding[:,2], c = temps, s=5)
+    plt.savefig(f"results/umap_analysis_{dataset}.png")
     plt.show()
+   
     
 if __name__ == '__main__':
     main()
