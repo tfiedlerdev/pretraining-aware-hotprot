@@ -7,37 +7,32 @@ from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
 from pathlib import Path
-import mlflow
-from optuna.integration.mlflow import MLflowCallback
-from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
-from thermostability.hotinfer_pregenerated import HotInferPregeneratedLSTM
+from thermostability.thermo_pregenerated_dataset import (
+    ThermostabilityPregeneratedDataset,
+)
+from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
+from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
 from tqdm.notebook import tqdm
 import sys
-from thermostability.thermo_pregenerated_dataset import zero_padding
+from thermostability.thermo_pregenerated_dataset import zero_padding, zero_padding700
+import wandb
+import argparse
+import pylab as pl
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if torch.cuda.is_available():
-    torch.cuda.empty_cache() 
-    
-cpu = torch.device("cpu")
+    torch.cuda.empty_cache()
 
+cpu = torch.device("cpu")
+torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
 
-train_ds = ThermostabilityPregeneratedDataset('train.csv')
-eval_ds = ThermostabilityPregeneratedDataset('val.csv')
 
-
-dataloaders = {
-    "train": DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding),
-    "val": DataLoader(eval_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding)
-}
-
-dataset_sizes = {"train": len(train_ds),"val": len(eval_ds)}
-
-
-def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
+def train_model(
+    model, optimizer, criterion, scheduler, dataloaders, dataset_sizes, use_wandb, num_epochs=25
+):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -45,19 +40,21 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
     best_epoch_loss = sys.float_info.max
     losses = []
     batchEnumeration = []
+    bestEpochPredictions = torch.tensor([])
+    bestEpochLabels = torch.tensor([])
     for epoch in range(num_epochs):
-        print(f'Epoch {epoch}/{num_epochs - 1}')
-        print('-' * 10)
-
+        print(f"Epoch {epoch}/{num_epochs - 1}")
+        print("-" * 10)
+        currentEpochPredictions = torch.tensor([])
+        currentEpochLabels = torch.tensor([])
         # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
-            if phase == 'train':
+        for phase in ["train", "val"]:
+            if phase == "train":
                 model.train()  # Set model to training mode
             else:
-                model.eval()   # Set model to evaluate mode
+                model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
-         
 
             # Iterate over data.
             for idx, (inputs, labels) in enumerate(dataloaders[phase]):
@@ -69,13 +66,18 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
 
                 # forward
                 # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
+                with torch.set_grad_enabled(phase == "train"):
                     outputs = model(inputs)
-                    
-                    loss = criterion(outputs,labels)
+                    loss = criterion(outputs, torch.unsqueeze(labels, 1))
 
+                    if phase == "val":
+                        currentEpochPredictions = torch.cat(
+                            (currentEpochPredictions, outputs.cpu())
+                        )
+                        currentEpochLabels = torch.cat((currentEpochLabels, labels.cpu()))
                     # backward + optimize only if in training phase
-                    if phase == 'train':
+                    if phase == "train":
+
                         if not torch.isnan(loss):
                             loss.backward()
                             threshold = 10
@@ -85,85 +87,159 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
                                         torch.nn.utils.clip_grad_norm_(p, threshold)
                             optimizer.step()
                         if torch.isnan(loss).any():
-                            print(f"Nan loss: {torch.isnan(loss)}| Loss: {loss}| inputs: {inputs}")
+                            print(
+                                f"Nan loss: {torch.isnan(loss)}| Loss: {loss}| inputs: {inputs}"
+                            )
                 # statistics
                 batch_size = inputs.size(0)
                 batch_loss = loss.item() * batch_size
                 losses.append(batch_loss)
-                batchEnumeration.append(batchEnumeration[-1]+1 if len(batchEnumeration)>0 else 0)
+                batchEnumeration.append(
+                    batchEnumeration[-1] + 1 if len(batchEnumeration) > 0 else 0
+                )
 
                 running_loss += batch_loss
-               
-            
-                if idx % 10 == 0:
-                    batch_size = inputs.size(0)
-                    tqdm.write("Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}".format(
-                        epoch,
-                        num_epochs,
-                        idx + 1,
-                        len(dataloaders[phase]),
-                        batch_loss / float(batch_size)
-                        ), end="\r")
-                    
-                    
-            if phase == 'train':
+                mean_abs_diff = (
+                    torch.abs(outputs.squeeze().sub(labels.squeeze()))
+                    .squeeze()
+                    .mean()
+                    .item()
+                )
+                if use_wandb:
+                    wandb.log({"mean_abs_diff": mean_abs_diff})
+                if idx % 1 == 0:
+                    tqdm.write(
+                        "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, batch abs diff mean {:.6f}".format(
+                            epoch,
+                            num_epochs,
+                            idx + 1,
+                            len(dataloaders[phase]),
+                            batch_loss / float(batch_size),
+                            mean_abs_diff,
+                        ),
+                        end="\r",
+                    )
+
+            if phase == "train":
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
 
-
-            print(f'{phase} Loss: {epoch_loss:.4f}')
+            print(f"{phase} Loss: {epoch_loss:.4f}")
 
             # deep copy the model
-            if phase == 'val' and epoch_loss < best_epoch_loss:
+            if phase == "val" and epoch_loss < best_epoch_loss:
                 best_epoch_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
-
+                if use_wandb:
+                    wandb.log({"mse_loss": epoch_loss})
+                bestEpochLabels = currentEpochLabels
+                bestEpochPredictions = currentEpochPredictions
         print()
 
-
     time_elapsed = time.time() - since
-    print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
-    print(f'Best val Acc: {best_epoch_loss:4f}')
+    print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
+    print(f"Best val Acc: {best_epoch_loss:4f}")
     # load best model weights
     model.load_state_dict(best_model_wts)
+    
+    pl.scatter(
+        bestEpochPredictions.squeeze().tolist(),
+        bestEpochLabels.squeeze().tolist()
+    )
+    plotPath = f"results/predictions.png"
+    pl.title(f"Loss: {best_epoch_loss}")
+    pl.xlabel("Predictions")
+    pl.ylabel("Labels")
+    pl.savefig(plotPath)
+    if use_wandb:
+        artifact = wandb.Artifact("results", type="train")
+        artifact.add_file(plotPath)
+        wandb.log_artifact(artifact)
     return model, best_epoch_loss
 
-YOUR_TRACKING_URI = "http://127.0.0.1:5000"
-mlflc = MLflowCallback(
-    tracking_uri=YOUR_TRACKING_URI,
-    metric_name="metric_score"
-)
-@mlflc.track_in_mlflow()
-def optimize_thermostability(trial):    
-    params = {
-        'model_learning_rate': trial.suggest_float('model_learning_rate', 0.01, 0.75, step=0.05),
-        'model_hidden_units': trial.suggest_int('model_hidden_units', 64, 640, step=64),
-        'model_hidden_layers': trial.suggest_int('model_hidden_layers', 1, 4, step=1)
+
+def run_train_experiment(config: dict = None, use_wandb = True):
+    train_ds = ThermostabilityPregeneratedDataset(
+        "train.csv", limit=config["dataset_limit"]
+    )
+    eval_ds = ThermostabilityPregeneratedDataset(
+        "train.csv" if config["val_on_trainset"] else "val.csv",
+        limit=config["dataset_limit"],
+    )
+    dataloaders = {
+        "train": DataLoader(
+            train_ds,
+            batch_size=config["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            collate_fn=zero_padding700,
+        ),
+        "val": DataLoader(
+            eval_ds,
+            batch_size=config["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            collate_fn=zero_padding700,
+        ),
     }
+    dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
     
-    model = HotInferPregeneratedLSTM(
-        params['model_hidden_units'],
-        params['model_hidden_layers'],
+    model = (
+        HotInferPregeneratedFC(
+            num_hidden_layers=config["model_hidden_layers"],
+            first_hidden_size=config["model_first_hidden_units"],
+        )
+        if config["model"] == "fc"
+        else CNNPregeneratedFC(
+            num_hidden_layers=config["model_hidden_layers"],
+            first_hidden_size=config["model_first_hidden_units"],
+        )
     )
     model.to(device)
-    
+    if use_wandb:
+        wandb.watch(model)
     criterion = nn.MSELoss()
-
-    optimizer_ft = torch.optim.SGD(model.parameters(), lr=params['model_learning_rate'], momentum=0.9)
-    
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
-
-    model, score = train_model(model, optimizer_ft, criterion, exp_lr_scheduler, num_epochs=1)
-
-    mlflow.log_params(params)
-    mlflow.pytorch.log_model(model, "model")
-    # candidate_model_uri = mlflow.pytorch.log_model(model).model_uri
-    mlflow.log_metric("score", score)
+    optimizer_ft = (
+        torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+        if config["optimizer"] == "adam"
+        else torch.optim.SGD(
+            model.parameters(), lr=config["learning_rate"], momentum=0.9
+        )
+    )
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
+    model, score = train_model(
+        model,
+        optimizer_ft,
+        criterion,
+        exp_lr_scheduler,
+        dataloaders,
+        dataset_sizes,
+        use_wandb,
+        num_epochs=config["epochs"],
+    )
     return score
 
-# minimize or maximize
-study = optuna.create_study(direction="minimize", study_name="thermostability-hyperparameters") # maximise the score during tuning
-study.optimize(optimize_thermostability, n_trials=20) # run the objective function 100 times
 
-print(study.best_trial) # print the best performing pipeline
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--learning_rate", type=float, required=True)
+    parser.add_argument("--model_hidden_layers", type=int, required=True)
+    parser.add_argument("--model_first_hidden_units", type=int, required=True)
+    parser.add_argument("--epochs", type=int, required=True)
+    parser.add_argument("--val_on_trainset", type=bool)
+    parser.add_argument("--dataset_limit", type=int)
+    parser.add_argument("--optimizer", type=str)
+    parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--model", type=str)
+    parser.add_argument("--no_wandb", action='store_true')
+    args = parser.parse_args()
+
+    argsDict = vars(args)
+    use_wandb = not argsDict["no_wandb"]
+    del argsDict["no_wandb"]
+    if use_wandb:
+        with wandb.init(config=argsDict):
+            run_train_experiment(config=wandb.config, use_wandb=True)
+    else: 
+        run_train_experiment(config=argsDict, use_wandb=False)
