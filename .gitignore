@@ -20,3 +20,4 @@ wandb
 *nbconvert.ipynb
 mlruns
 mlartifacts
+runs
