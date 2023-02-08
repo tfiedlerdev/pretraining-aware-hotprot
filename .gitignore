@@ -15,5 +15,8 @@ config.ini
 
 init-git-lfs.sh
 
+wandb
+
+*nbconvert.ipynb
 mlruns
 mlartifacts

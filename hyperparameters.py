@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import DataLoader
-from torch.nn.functional import pad
 import optuna
 import time
 import copy
@@ -11,9 +10,10 @@ from pathlib import Path
 import mlflow
 from optuna.integration.mlflow import MLflowCallback
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset
-from thermostability.hotinfer_pregenerated import HotInferPregenerated
+from thermostability.hotinfer_pregenerated import HotInferPregeneratedLSTM
 from tqdm.notebook import tqdm
 import sys
+from thermostability.thermo_pregenerated_dataset import zero_padding
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -25,24 +25,9 @@ cpu = torch.device("cpu")
 
 torch.cuda.list_gpu_processes()
 
-train_ds = ThermostabilityPregeneratedDataset('data/s_s/train')
-eval_ds = ThermostabilityPregeneratedDataset('data/s_s/eval')
+train_ds = ThermostabilityPregeneratedDataset('train.csv')
+eval_ds = ThermostabilityPregeneratedDataset('val.csv')
 
-def zero_padding(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
-    max_size = 0
-    for s_s, temp in s_s_list:
-        size = s_s.size(0)
-        if size > max_size:
-            max_size = size
-
-    padded_s_s = []
-    temps =[]
-    for s_s, temp in s_s_list:
-        dif = max_size - s_s.size(0) 
-        padded = pad(s_s, (0,0,dif,0), "constant", 0)
-        padded_s_s.append(padded)
-        temps.append(temp)
-    return torch.stack(padded_s_s, 0), torch.stack(temps)
 
 dataloaders = {
     "train": DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=4, collate_fn=zero_padding),
@@ -91,9 +76,16 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
-
+                        if not torch.isnan(loss):
+                            loss.backward()
+                            threshold = 10
+                            for p in model.parameters():
+                                if p.grad != None:
+                                    if p.grad.norm() > threshold:
+                                        torch.nn.utils.clip_grad_norm_(p, threshold)
+                            optimizer.step()
+                        if torch.isnan(loss).any():
+                            print(f"Nan loss: {torch.isnan(loss)}| Loss: {loss}| inputs: {inputs}")
                 # statistics
                 batch_size = inputs.size(0)
                 batch_loss = loss.item() * batch_size
@@ -105,7 +97,7 @@ def train_model(model, optimizer, criterion, scheduler, num_epochs=25):
             
                 if idx % 10 == 0:
                     batch_size = inputs.size(0)
-                    tqdm.write("Epoch: [{}/{}], Batch: [{}/{}], train accuracy: {:.6f}, loss: {:.6f}".format(
+                    tqdm.write("Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}".format(
                         epoch,
                         num_epochs,
                         idx + 1,
@@ -150,12 +142,11 @@ def optimize_thermostability(trial):
         'model_hidden_layers': trial.suggest_int('model_hidden_layers', 1, 4, step=1)
     }
     
-    model = HotInferPregenerated(
+    model = HotInferPregeneratedLSTM(
         params['model_hidden_units'],
         params['model_hidden_layers'],
     )
-    
-    model.esmfold.requires_grad_(False)
+    model.to(device)
     
     criterion = nn.MSELoss()
 
@@ -163,18 +154,16 @@ def optimize_thermostability(trial):
     
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-    model, score = train_model(model, optimizer_ft, criterion, exp_lr_scheduler, num_epochs=10)
+    model, score = train_model(model, optimizer_ft, criterion, exp_lr_scheduler, num_epochs=1)
 
     mlflow.log_params(params)
-    eval_data = train_ds.thermo_dataframe.iloc[0,:]
-    eval_data["label"] = train_ds.thermo_dataframe.iloc[1,:]
-    candidate_model_uri = mlflow.pytorch.log_model(model).model_uri
-    mlflow.evaluate(model=candidate_model_uri, data=eval_data, targets="label", model_type="regressor")
+    mlflow.pytorch.log_model(model, "model")
+    # candidate_model_uri = mlflow.pytorch.log_model(model).model_uri
     mlflow.log_metric("score", score)
     return score
 
 # minimize or maximize
-study = optuna.create_study(direction="maximize", study_name="thermostability-hyperparameters") # maximise the score during tuning
-study.optimize(optimize_thermostability, n_trials=100) # run the objective function 100 times
+study = optuna.create_study(direction="minimize", study_name="thermostability-hyperparameters") # maximise the score during tuning
+study.optimize(optimize_thermostability, n_trials=20) # run the objective function 100 times
 
 print(study.best_trial) # print the best performing pipeline

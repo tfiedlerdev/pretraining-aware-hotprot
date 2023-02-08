@@ -7,18 +7,19 @@ from IPython.display import clear_output, display
 import sys
 
 class ThermostabilityDataset(Dataset):
-    def __init__(self, file_path: str, use_cache: bool = True, max_seq_len=-1, max_ds_len=-1) -> None:
+    def __init__(self, file_path: str, use_cache: bool = True, max_seq_len=-1, max_ds_len=-1, once_occuring_seq_only=False) -> None:
         super().__init__()
-        sequences = []
-        melting_points = []
+        
 
-        cache_file = file_path+"_cache.p"
+        cache_file = file_path+"_v2_cache.p"
 
         if use_cache and os.path.exists(cache_file):
             print("Loading data from cache file: ", cache_file)
             with open( cache_file, "rb" ) as f:
-                self.thermo_dataframe = pickle.load(f)
+                self.sequence_thermo = pickle.load(f)
         else:     
+            sequences = []
+            melting_points = []
             with open(file_path) as file:
                 for index, line in enumerate(file):
                     if index%50 == 0:
@@ -33,30 +34,35 @@ class ThermostabilityDataset(Dataset):
                         sequence = line.replace("\n", "")
                         sequences.append(sequence)
             
-            data = {'x': sequences, 'y': melting_points}
-
-            self.thermo_dataframe = pd.DataFrame(data)
+            self.sequence_thermo =[(sequences[i], melting_points[i]) for i in range(len(sequences))]
+    
             if use_cache:
                 with open( cache_file, "wb" ) as f:
-                    pickle.dump(self.thermo_dataframe, f)
+                    pickle.dump(self.sequence_thermo, f)
 
         if max_seq_len > 0: 
-            mask = self.thermo_dataframe.apply(lambda row: len(row['x']) <= max_seq_len, axis=1)
-            self.thermo_dataframe = self.thermo_dataframe[mask]
+            self.sequence_thermo = list(filter(lambda seq_t: len(seq_t[0])<=max_seq_len, self.sequence_thermo))
+
         
+        if once_occuring_seq_only:
+            uniqueSeqs = set([seq for seq, t in self.sequence_thermo])
+            nums = dict.fromkeys(uniqueSeqs, 0)
+
+            for seq,_ in self.sequence_thermo:
+                nums[seq] +=1
+            self.sequence_thermo = list(filter(lambda seq_t: nums[seq_t[0]] == 1, self.sequence_thermo))
+
         self.max_ds_len = max_ds_len if max_ds_len != -1 else sys.maxsize
 
 
     def __len__(self):
-        return len(self.thermo_dataframe) if self.max_ds_len > len(self.thermo_dataframe) else self.max_ds_len
+        return len(self.sequence_thermo) if self.max_ds_len > len(self.sequence_thermo) else self.max_ds_len
 
     def __getitem__(self, index):
         if(torch.is_tensor(index)):
             index = index.tolist()
-
-        items = self.thermo_dataframe.iloc[index, :]
-        
-
-        return items["x"], torch.tensor([items["y"]], dtype=torch.float32)
+        seq, temp = self.sequence_thermo[index]
+    
+        return seq, torch.tensor([temp], dtype=torch.float32)
 
         
