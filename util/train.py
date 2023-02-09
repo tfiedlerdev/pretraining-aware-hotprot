@@ -140,19 +140,21 @@ def train_model(
     if return_best_model:
         model = torch.load(best_model_path)
 
-    pl.scatter(
-        bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
-    )
-    train_size =dataset_sizes["train"]
-    val_size = dataset_sizes["val"]
-    plotPath = f"results/predictions_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
-    pl.title(f"Loss: {best_epoch_loss}")
-    pl.xlabel("Predictions")
-    pl.ylabel("Labels")
-    pl.savefig(plotPath)
-    print(f"Saved predictions as scatter plot at {plotPath}")
     if use_wandb:
-        artifact = wandb.Artifact("results", type="train")
-        artifact.add_file(plotPath)
-        wandb.log_artifact(artifact)
+        data = [[x, y] for (x, y) in zip(bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist())]
+        table = wandb.Table(data=data, columns = ["class_x", "class_y"])
+        wandb.log({"predictions" : wandb.plot.scatter(table,
+                                    "predictions", "labels")})
+    else: 
+        pl.scatter(
+        bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
+        )
+        train_size =dataset_sizes["train"]
+        val_size = dataset_sizes["val"]
+        plotPath = f"results/predictions_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
+        pl.title(f"Loss: {best_epoch_loss}")
+        pl.xlabel("Predictions")
+        pl.ylabel("Labels")
+        pl.savefig(plotPath)
+        print(f"Saved predictions as scatter plot at {plotPath}")
     return model, best_epoch_loss
