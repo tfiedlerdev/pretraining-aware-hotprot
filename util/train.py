@@ -46,8 +46,9 @@ def train_model(
                 model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
-
+            epoch_mad = 0.
             # Iterate over data.
+            
             for idx, (inputs, labels) in enumerate(dataloaders[phase]):
                
                 inputs = prepare_inputs(inputs)
@@ -92,7 +93,7 @@ def train_model(
                 batchEnumeration.append(
                     batchEnumeration[-1] + 1 if len(batchEnumeration) > 0 else 0
                 )
-
+                num_batches= dataset_sizes[phase] / batch_size
                 running_loss += batch_loss
                 mean_abs_diff = (
                     torch.abs(outputs.squeeze().sub(labels.squeeze()))
@@ -100,17 +101,19 @@ def train_model(
                     .mean()
                     .item()
                 )
+               
+                epoch_mad += mean_abs_diff / num_batches
                 if use_wandb:
                     wandb.log({"mean_abs_diff": mean_abs_diff})
                 if idx % 1 == 0:
                     tqdm.write(
-                        "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, batch abs diff mean {:.6f}".format(
+                        "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, epoch abs diff mean {:.6f}".format(
                             epoch,
                             num_epochs,
                             idx + 1,
                             len(dataloaders[phase]),
                             batch_loss / float(batch_size),
-                            mean_abs_diff,
+                            epoch_mad,
                         ),
                         end="\r",
                     )
