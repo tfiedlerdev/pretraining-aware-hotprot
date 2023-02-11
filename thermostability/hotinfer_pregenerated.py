@@ -40,18 +40,18 @@ class HotInferPregeneratedLSTM(nn.Module):
 
 
 class HotInferPregeneratedFC(nn.Module):
-    def __init__(self, input_seq_len=700, num_hidden_layers=3, first_hidden_size=1024):
+    def __init__(self, input_len=700, num_hidden_layers=3, first_hidden_size=1024):
         super().__init__()
       
         # s_s shape torch.Size([1, sequence_len, 1024])
         # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
         
-        representation_height = 1024
+        
 
         self.thermo_module_regression = torch.nn.Sequential(
             nn.Flatten(),
-            nn.LayerNorm(input_seq_len * representation_height),
-            nn.Linear(input_seq_len * representation_height, first_hidden_size),
+            nn.LayerNorm(input_len ),
+            nn.Linear(input_len , first_hidden_size),
             nn.ReLU(),
             self.create_hidden_layers(num_hidden_layers, first_hidden_size,16),
             nn.Linear(16,1))

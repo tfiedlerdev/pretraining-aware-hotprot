@@ -20,6 +20,8 @@ parameters:
   optimizer: 
     values: ["sgd"]
   model: 
-    values: ["cnn"]
+    values: ["fc"]
   batch_size: 
     values: [2]
+  representation_key: 
+    values: ["esm_s_B_avg"]

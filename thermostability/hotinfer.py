@@ -59,12 +59,14 @@ class HotInfer(nn.Module):
 
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
+from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
 class HotInferModelParallel(nn.Module):
     def __init__(
         self,
-        representation_key="s_s_0",
-        thermo_module: nn.Module = HotInferPregeneratedFC()
+        representation_key: RepresentationKey,
+        thermo_module: nn.Module = HotInferPregeneratedFC(), 
+        pad_representations = False
     ):
         super().__init__()
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,6 +78,7 @@ class HotInferModelParallel(nn.Module):
         self.thermo_module = thermo_module.to("cuda:1")
 
         self.representation_key = representation_key
+        
         meta_dir = f"data/{representation_key}"
         os.makedirs(meta_dir, exist_ok=True)
         self.meta_filepath = os.path.join(meta_dir, "meta.pickle")
@@ -84,6 +87,8 @@ class HotInferModelParallel(nn.Module):
                 self.meta = pickle.load(f)
         else:
             self.meta = {}
+
+        self.pad_representations = pad_representations
 
     def forward(self, sequences: List[str]):
         # TODO: optimize (run esmfold for samples while thermomodule runs, replace esmfold by esm2)
@@ -98,7 +103,8 @@ class HotInferModelParallel(nn.Module):
                    os.path.join(cacheDir, self.meta[seq])
                 )
                 else:
-                    repr = self.esmfold.infer(sequences=[seq])[self.representation_key].squeeze()
+                    outputs = self.esmfold.infer(sequences=[seq], representation_key=self.representation_key)
+                    repr = outputs[self.representation_key].squeeze()
                     cacheFileName = f"{len(self.meta.keys())+1}.pt"
                     
                     with open(self.meta_filepath, "wb") as f:
@@ -107,7 +113,7 @@ class HotInferModelParallel(nn.Module):
                         pickle.dump(self.meta, f)
                         self.meta[seq] = cacheFileName
                         
-                reprs.append(zero_padding_700(repr))
+                reprs.append(zero_padding_700(repr) if self.pad_representations else repr)
             reprBatch = torch.stack(reprs).to("cuda:1")
 
         return self.thermo_module(reprBatch)
