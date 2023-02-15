@@ -36,7 +36,7 @@ from util.train import train_model
 
 def run_train_experiment(config: dict = None, use_wandb=True):
     representation_key = config["representation_key"]
-    model_parallel = config["model_parallel"]
+    model_parallel = config["model_parallel"] =="true"
     val_on_trainset = config["val_on_trainset"] =="true"
     limit = config["dataset_limit"]
     train_ds = (
@@ -134,6 +134,7 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
         label=representation_key,
     )
+    
     return score
 
 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--model", type=str, default="uni_prot")
     
-    parser.add_argument("--model_parallel", action="store_true")
+    parser.add_argument("--model_parallel", type=str, choices=["true", "false"])
     parser.add_argument("--no_wandb", action="store_true")
     parser.add_argument("--representation_key", type=str, default="uni_prot")
     parser.add_argument("--model_dropoutrate", type=float, default=0.3)
@@ -162,5 +163,6 @@ if __name__ == "__main__":
     if use_wandb:
         with wandb.init(config=argsDict):
             run_train_experiment(config=wandb.config, use_wandb=True)
+
     else:
         run_train_experiment(config=argsDict, use_wandb=False)

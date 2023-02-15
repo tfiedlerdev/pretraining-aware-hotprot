@@ -142,12 +142,14 @@ def train_model(
             print(f"{phase} Loss: {epoch_loss:.4f}")
 
             # deep copy the model
+            if phase == "val":
+                if use_wandb:
+                    wandb.log({"mse_loss": epoch_loss})
             if phase == "val" and epoch_loss < best_epoch_loss:
                 best_epoch_loss = epoch_loss
                 if return_best_model:
                     torch.save(model, best_model_path)
-                if use_wandb:
-                    wandb.log({"mse_loss": epoch_loss})
+                
                 bestEpochLabels = currentEpochLabels
                 bestEpochPredictions = currentEpochPredictions
         print()
@@ -172,7 +174,7 @@ def train_model(
                 bestEpochLabels.squeeze().tolist(),
             )
         ]
-        table = wandb.Table(data=data, columns=["class_x", "class_y"])
+        table = wandb.Table(data=data, columns=["predictions", "labels"])
         wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
     else:
         pl.scatter(
