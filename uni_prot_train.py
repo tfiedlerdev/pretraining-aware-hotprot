@@ -36,8 +36,8 @@ def main():
     val_ds = UniProtDataset("val.csv")
 
     dataloaders = {
-    "train": DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=2),
-    "val": DataLoader(val_ds, batch_size=2, shuffle=True, num_workers=2)
+        "train": DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=2),
+        "val": DataLoader(val_ds, batch_size=2, shuffle=True, num_workers=2)
     }
 
     dataset_sizes = {"train": len(train_ds),"val": len(val_ds)}

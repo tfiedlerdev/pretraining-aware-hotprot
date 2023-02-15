@@ -1,12 +1,8 @@
 import torch
 from torch.utils.data import DataLoader
-import optuna
-import time
-import copy
 from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
-from pathlib import Path
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
 )
@@ -78,9 +74,10 @@ def run_train_experiment(config: dict = None, use_wandb=True):
     input_size = input_sizes[representation_key]
     thermo = (
         DenseModel(
-            input_len=input_size,
+            layers=config['model_hidden_layers'],
+            dropout_rate=config['model_dropoutrate']
         )
-        if representation_key == "uni_prot"
+        if config["model"] == "uni_prot"
         else HotInferPregeneratedFC(
             input_len=input_size,
             num_hidden_layers=config["model_hidden_layers"],
@@ -96,18 +93,23 @@ def run_train_experiment(config: dict = None, use_wandb=True):
 
     model = (
         thermo
-        if representation_key == "uni_prot"
+        if config["model"] == "uni_prot"
         else HotInferModelParallel(representation_key, thermo_module=thermo)
     )
 
     if use_wandb:
         wandb.watch(thermo)
     criterion = nn.MSELoss()
+    weight_decay = 1e-5 if config['weight_regularizer'] else 0
     optimizer_ft = (
-        torch.optim.Adam(thermo.parameters(), lr=config["learning_rate"])
+        torch.optim.Adam(
+            thermo.parameters(), 
+            lr=config["learning_rate"], 
+            weight_decay= weight_decay
+            )
         if config["optimizer"] == "adam"
         else torch.optim.SGD(
-            thermo.parameters(), lr=config["learning_rate"], momentum=0.9
+            thermo.parameters(), lr=config["learning_rate"], momentum=0.9, weight_decay=weight_decay,
         )
     )
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
@@ -119,7 +121,8 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         dataset_sizes,
         use_wandb,
         num_epochs=config["epochs"],
-        prepare_labels=lambda x: x.to("cuda:1"),
+        prepare_inputs=lambda x: x.to("cuda:0"),
+        prepare_labels=lambda x: x.to("cuda:0") if config["model"] == "uni_prot" else x.to("cuda:1"),
         label=representation_key,
     )
     return score
@@ -132,12 +135,14 @@ if __name__ == "__main__":
     parser.add_argument("--model_first_hidden_units", type=int, required=True)
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--val_on_trainset", type=bool)
-    parser.add_argument("--dataset_limit", type=int)
+    parser.add_argument("--dataset_limit", type=int, default=100000)
     parser.add_argument("--optimizer", type=str)
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--model", type=str)
     parser.add_argument("--representation_key", type=str)
     parser.add_argument("--no_wandb", action="store_true")
+    parser.add_argument("--model_dropoutrate", type=float)
+    parser.add_argument("--weight_regularizer", type=bool)
     args = parser.parse_args()
 
     argsDict = vars(args)
