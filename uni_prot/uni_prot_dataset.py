@@ -11,12 +11,10 @@ import h5py
 
 class UniProtDataset(Dataset):
     def __init__(
-        self, dataset_filename: str = "train.csv", limit: int = 100000
+        self, dataset_filename: str = "train.csv", limit: int = 10000000
     ) -> None:
         super().__init__()
-        self.cacheFile = "data/uni_prot/cacheFile"
-        if limit == None:
-            limit = 100000
+        self.cacheFile = f"data/uni_prot/cache_{dataset_filename.split('.')[0]}"
         self.limit = limit
 
         if not os.path.exists(self.cacheFile):
@@ -26,6 +24,7 @@ class UniProtDataset(Dataset):
                 self.seqs = [
                     seq for (i, (seq, thermo)) in enumerate(csv_seqs) if i != 0
                 ]
+                print(f"Seqs in {dataset_filename}: {len(self.seqs)} ")
                 self.seqs = set(self.seqs)
 
             first = True
@@ -71,9 +70,11 @@ class UniProtDataset(Dataset):
                     continue
             with open(self.cacheFile, "wb") as f:
                 pickle.dump(self.dataset, f)
+                print(len(self.dataset))
         else:
             with open(self.cacheFile, "rb") as f:
                 self.dataset = pickle.load(f)
+                print(len(self.dataset))
 
     def __len__(self):
         return min(len(self.dataset), self.limit)

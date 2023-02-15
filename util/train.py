@@ -9,6 +9,7 @@ import pylab as pl
 from typing import Callable
 from util.telegram import TelegramBot
 
+
 def train_model(
     model,
     criterion: nn.modules.loss._Loss,
@@ -21,7 +22,7 @@ def train_model(
     max_gradient_clip: float = 10,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
-    label=""
+    label="",
 ):
     telegram = TelegramBot()
     optimizer = scheduler.optimizer
@@ -42,7 +43,9 @@ def train_model(
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}/{num_epochs - 1}")
         print("-" * 10)
-        response = telegram.edit_text_message(messageId, f"Epoch {epoch}/{num_epochs - 1}")
+        response = telegram.edit_text_message(
+            messageId, f"Epoch {epoch}/{num_epochs - 1}"
+        )
 
         currentEpochPredictions = torch.tensor([])
         currentEpochLabels = torch.tensor([])
@@ -54,11 +57,11 @@ def train_model(
                 model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
-            epoch_mad = 0.
+            epoch_mad = 0.0
             # Iterate over data.
-            
+
             for idx, (inputs, labels) in enumerate(dataloaders[phase]):
-               
+
                 inputs = prepare_inputs(inputs)
                 labels = prepare_labels(labels)
 
@@ -101,7 +104,7 @@ def train_model(
                 batchEnumeration.append(
                     batchEnumeration[-1] + 1 if len(batchEnumeration) > 0 else 0
                 )
-                
+
                 running_loss += batch_loss
                 mean_abs_diff = (
                     torch.abs(outputs.squeeze().sub(labels.squeeze()))
@@ -109,10 +112,8 @@ def train_model(
                     .mean()
                     .item()
                 )
-               
+
                 epoch_mad += mean_abs_diff
-                if use_wandb:
-                    wandb.log({"mean_abs_diff": mean_abs_diff})
                 if idx % 1 == 0:
                     tqdm.write(
                         "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, epoch abs diff mean {:.6f}".format(
@@ -121,11 +122,18 @@ def train_model(
                             idx + 1,
                             len(dataloaders[phase]),
                             batch_loss / float(batch_size),
-                            epoch_mad/(idx+1),
+                            epoch_mad / (idx + 1),
                         ),
                         end="\r",
                     )
 
+            if use_wandb:
+                wandb.log(
+                    {
+                        f"mean_abs_diff_{phase}": mean_abs_diff,
+                        f"epoch_mad_{phase}": epoch_mad / len(dataloaders[phase]),
+                    }
+                )
             if phase == "train":
                 scheduler.step()
 
@@ -147,7 +155,9 @@ def train_model(
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
     print(f"Best val Acc: {best_epoch_loss:4f}")
-    telegram.send_telegram(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
+    telegram.send_telegram(
+        f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s"
+    )
     telegram.send_telegram(f"Best val Acc: {best_epoch_loss:4f}")
 
     # load best model weights
@@ -155,15 +165,20 @@ def train_model(
         model = torch.load(best_model_path)
 
     if use_wandb:
-        data = [[x, y] for (x, y) in zip(bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist())]
-        table = wandb.Table(data=data, columns = ["class_x", "class_y"])
-        wandb.log({"predictions" : wandb.plot.scatter(table,
-                                    "predictions", "labels")})
-    else: 
+        data = [
+            [x, y]
+            for (x, y) in zip(
+                bestEpochPredictions.squeeze().tolist(),
+                bestEpochLabels.squeeze().tolist(),
+            )
+        ]
+        table = wandb.Table(data=data, columns=["class_x", "class_y"])
+        wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
+    else:
         pl.scatter(
-        bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
+            bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
         )
-        train_size =dataset_sizes["train"]
+        train_size = dataset_sizes["train"]
         val_size = dataset_sizes["val"]
         plotPath = f"results/predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
         pl.title(f"Loss: {best_epoch_loss}, {label}")
