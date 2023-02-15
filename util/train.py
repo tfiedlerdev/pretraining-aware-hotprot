@@ -7,7 +7,7 @@ import sys
 import wandb
 import pylab as pl
 from typing import Callable
-
+from util.telegram import TelegramBot
 
 def train_model(
     model,
@@ -23,6 +23,7 @@ def train_model(
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     label=""
 ):
+    telegram = TelegramBot()
     optimizer = scheduler.optimizer
     since = time.time()
     best_model_path = "results/best_model.pt"
@@ -34,9 +35,15 @@ def train_model(
     batchEnumeration = []
     bestEpochPredictions = torch.tensor([])
     bestEpochLabels = torch.tensor([])
+
+    telegram.send_telegram("Starting training...")
+    response = telegram.send_telegram("Starting training...")
+    messageId = response["result"]["message_id"]
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}/{num_epochs - 1}")
         print("-" * 10)
+        response = telegram.edit_text_message(messageId, f"Epoch {epoch}/{num_epochs - 1}")
+
         currentEpochPredictions = torch.tensor([])
         currentEpochLabels = torch.tensor([])
         # Each epoch has a training and validation phase
@@ -123,7 +130,7 @@ def train_model(
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
-
+            telegram.send_telegram(f"{epoch} - {phase} Loss: {epoch_loss:.4f}")
             print(f"{phase} Loss: {epoch_loss:.4f}")
 
             # deep copy the model
@@ -140,6 +147,9 @@ def train_model(
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
     print(f"Best val Acc: {best_epoch_loss:4f}")
+    telegram.send_telegram(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
+    telegram.send_telegram(f"Best val Acc: {best_epoch_loss:4f}")
+
     # load best model weights
     if return_best_model:
         model = torch.load(best_model_path)
@@ -160,5 +170,6 @@ def train_model(
         pl.xlabel("Predictions")
         pl.ylabel("Labels")
         pl.savefig(plotPath)
+        telegram.send_photo(plotPath, "scatter plot")
         print(f"Saved predictions as scatter plot at {plotPath}")
     return model, best_epoch_loss
