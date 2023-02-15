@@ -36,20 +36,25 @@ from util.train import train_model
 
 def run_train_experiment(config: dict = None, use_wandb=True):
     representation_key = config["representation_key"]
+    model_parallel = config["model_parallel"]
+    limit = config["dataset_limit"]
     train_ds = (
-        UniProtDataset("train.csv", limit=config["dataset_limit"])
+        UniProtDataset("train.csv", limit=limit)
         if representation_key == "uni_prot"
-        else ThermostabilityDataset("train.csv", limit=config["dataset_limit"])
-    )
+        else ThermostabilityPregeneratedDataset("train.csv", limit=limit, usePerProteinRep=True) if representation_key=="s_s_0_avg"
+        else ThermostabilityDataset("train.csv", limit=limit)   )
+    
+    valFileName =  "train.csv" if config["val_on_trainset"] else "val.csv"
     eval_ds = (
         UniProtDataset(
-            "train.csv" if config["val_on_trainset"] else "val.csv",
-            limit=config["dataset_limit"],
+           valFileName,
+            limit=limit
         )
         if representation_key == "uni_prot"
+        else ThermostabilityPregeneratedDataset(valFileName, limit=limit, usePerProteinRep=True) if representation_key=="s_s_0_avg"
         else ThermostabilityDataset(
-            "train.csv" if config["val_on_trainset"] else "val.csv",
-            limit=config["dataset_limit"],
+            valFileName,
+           limit=limit
         )
     )
     dataloaders = {
@@ -69,7 +74,7 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         ),
     }
     dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
-    input_sizes = {"esm_s_B_avg": 2560, "uni_prot": 1024}
+    input_sizes = {"esm_s_B_avg": 2560, "uni_prot": 1024, "s_s_0_A": 148 * 1024, "s_s_0_avg": 1024}
 
     input_size = input_sizes[representation_key]
     thermo = (
@@ -93,9 +98,11 @@ def run_train_experiment(config: dict = None, use_wandb=True):
 
     model = (
         thermo
-        if config["model"] == "uni_prot"
+        if not model_parallel
         else HotInferModelParallel(representation_key, thermo_module=thermo)
     )
+    if not model_parallel:
+        model = model.to("cuda:0")
 
     if use_wandb:
         wandb.watch(thermo)
@@ -122,7 +129,7 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         use_wandb,
         num_epochs=config["epochs"],
         prepare_inputs=lambda x: x.to("cuda:0"),
-        prepare_labels=lambda x: x.to("cuda:0") if config["model"] == "uni_prot" else x.to("cuda:1"),
+        prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
         label=representation_key,
     )
     return score
@@ -139,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--model", type=str, default="uni_prot")
+    parser.add_argument("--model_parallel", action="store_true")
     parser.add_argument("--no_wandb", action="store_true")
     parser.add_argument("--representation_key", type=str, default="uni_prot")
     parser.add_argument("--model_dropoutrate", type=float, default=0.3)
