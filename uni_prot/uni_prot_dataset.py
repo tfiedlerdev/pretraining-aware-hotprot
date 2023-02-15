@@ -61,22 +61,22 @@ class UniProtDataset(Dataset):
                 try:
                     id = item[0]
                     temps = full_temps[id]
-                    repr = item[1]
+                    repr = torch.from_numpy(item[1][()])
                     for temp in temps:
-                        entry = {"representation": repr, "temp": temp}
+                        entry = ( repr,
+                           torch.tensor(float(temp), dtype=torch.float32)
+                        )
                         self.dataset.append(entry)
                 except KeyError:
                     continue
             with open(self.cacheFile, "wb") as f:
                 pickle.dump(self.dataset, f)
         else:
-            self.dataset = pickle.load(self.cacheFile)
+            with open(self.cacheFile, "rb") as f:
+                self.dataset = pickle.load(f)
 
     def __len__(self):
         return min(len(self.dataset), self.limit)
 
     def __getitem__(self, index):
-        item = self.dataset[index]
-        return torch.from_numpy(item["representation"][()]), torch.tensor(
-            float(item["temp"]), dtype=torch.float32
-        )
+        return self.dataset[index]
