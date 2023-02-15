@@ -16,10 +16,15 @@ from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
 from tqdm.notebook import tqdm
 import sys
 from thermostability.thermo_dataset import ThermostabilityDataset
-from thermostability.thermo_pregenerated_dataset import zero_padding_collate, zero_padding700_collate
+from thermostability.thermo_pregenerated_dataset import (
+    zero_padding_collate,
+    zero_padding700_collate,
+)
 import wandb
 import argparse
 import pylab as pl
+from uni_prot.dense_model import DenseModel
+from uni_prot.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,13 +38,23 @@ torch.cuda.list_gpu_processes()
 from util.train import train_model
 
 
-def run_train_experiment(config: dict = None, use_wandb = True):
-    train_ds = ThermostabilityDataset(
-        "train.csv", limit=config["dataset_limit"]
+def run_train_experiment(config: dict = None, use_wandb=True):
+    representation_key = config["representation_key"]
+    train_ds = (
+        UniProtDataset("train.csv", limit=config["dataset_limit"])
+        if representation_key == "uni_prot"
+        else ThermostabilityDataset("train.csv", limit=config["dataset_limit"])
     )
-    eval_ds = ThermostabilityDataset(
-        "train.csv" if config["val_on_trainset"] else "val.csv",
-        limit=config["dataset_limit"],
+    eval_ds = (
+        UniProtDataset(
+            "train.csv" if config["val_on_trainset"] else "val.csv",
+            limit=config["dataset_limit"],
+        )
+        if representation_key == "uni_prot"
+        else ThermostabilityDataset(
+            "train.csv" if config["val_on_trainset"] else "val.csv",
+            limit=config["dataset_limit"],
+        )
     )
     dataloaders = {
         "train": DataLoader(
@@ -47,24 +62,26 @@ def run_train_experiment(config: dict = None, use_wandb = True):
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            #collate_fn=zero_padding700_collate,
+            # collate_fn=zero_padding700_collate,
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            #collate_fn=zero_padding700_collate,
+            # collate_fn=zero_padding700_collate,
         ),
     }
     dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
-    input_sizes = {
-        "esm_s_B_avg": 2560
-    }
-    representation_key = config["representation_key"]
+    input_sizes = {"esm_s_B_avg": 2560, "uni_prot": 1024}
+
     input_size = input_sizes[representation_key]
     thermo = (
-        HotInferPregeneratedFC(
+        DenseModel(
+            input_len=input_size,
+        )
+        if representation_key == "uni_prot"
+        else HotInferPregeneratedFC(
             input_len=input_size,
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
@@ -76,8 +93,12 @@ def run_train_experiment(config: dict = None, use_wandb = True):
             first_hidden_size=config["model_first_hidden_units"],
         )
     )
-    
-    model = HotInferModelParallel(representation_key, thermo_module=thermo)
+
+    model = (
+        thermo
+        if representation_key == "uni_prot"
+        else HotInferModelParallel(representation_key, thermo_module=thermo)
+    )
 
     if use_wandb:
         wandb.watch(thermo)
@@ -99,7 +120,7 @@ def run_train_experiment(config: dict = None, use_wandb = True):
         use_wandb,
         num_epochs=config["epochs"],
         prepare_labels=lambda x: x.to("cuda:1"),
-        label=representation_key
+        label=representation_key,
     )
     return score
 
@@ -116,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--model", type=str)
     parser.add_argument("--representation_key", type=str)
-    parser.add_argument("--no_wandb", action='store_true')
+    parser.add_argument("--no_wandb", action="store_true")
     args = parser.parse_args()
 
     argsDict = vars(args)
@@ -125,5 +146,5 @@ if __name__ == "__main__":
     if use_wandb:
         with wandb.init(config=argsDict):
             run_train_experiment(config=wandb.config, use_wandb=True)
-    else: 
+    else:
         run_train_experiment(config=argsDict, use_wandb=False)
