@@ -4,9 +4,9 @@
 #SBATCH --mem=64G
 #SBATCH --gpus=1
 #SBATCH --mail-type ALL
-#SBATCH --mail-user leon.hermann@student.hpi.de
-
+#SBATCH --mail-user hoangan.nguyen@student.hpi.de
+#SBATCH --time=70:0:0
 
 eval "$(conda shell.bash hook)"
 conda activate hotshot
-srun jupyter nbconvert --execute --to notebook --inplace uni_prot.ipynb
+srun python uni_prot_train.py

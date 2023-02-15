@@ -1,27 +1,31 @@
 program: hyperparameters.py
-method: grid
+method: bayes
 name: overfit_on_train_set
 metric:
   name: mse_loss
   goal: minimize
 parameters:
   learning_rate:
-    values: [0.3]
+    min: 0.001
+    max: 0.5
   model_hidden_layers:
-    values: [2]
+    values: [1,2,3,4]
   model_first_hidden_units:
     values: [2048]
+  model_dropoutrate:
+    min: 0.0
+    max: 0.5
   epochs:
-    values: [35]
+    values: [5]
   val_on_trainset:
-    values: [true]
-  dataset_limit:
-    values: [16]
+    values: [false]
+  weight_regularizer:
+    values: [true, false]
   optimizer: 
-    values: ["sgd"]
+    values: ["sgd", "adam"]
   model: 
-    values: ["fc"]
+    values: ["uni_prot"]
   batch_size: 
-    values: [2]
+    values: [8]
   representation_key: 
-    values: ["esm_s_B_avg"]
+    values: ["uni_prot"]
