@@ -73,7 +73,7 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         ),
     }
     dataset_sizes = {"train": len(train_ds), "val": len(eval_ds)}
-    input_sizes = {"esm_s_B_avg": 2560, "uni_prot": 1024}
+    input_sizes = {"esm_s_B_avg": 2560, "uni_prot": 1024, "s_s_0_A": 148 * 1024}
 
     input_size = input_sizes[representation_key]
     thermo = (

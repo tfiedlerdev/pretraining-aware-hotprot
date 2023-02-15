@@ -32,7 +32,7 @@ def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]")
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
-    def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000) -> None:
+    def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000, usePerProteinRep = False) -> None:
         super().__init__()
 
         dsFilePath = os.path.join("data/s_s/", dataset_filename)
@@ -52,6 +52,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
             print(f"Omitted {diff} sequences of {dataset_filename} because they have not been pregenerated")
         self.sequences_dir = "data/s_s"
+        self.usePerProteinRep = usePerProteinRep
 
     def __len__(self):
         return min(len(self.filename_thermo_seq), self.limit)
@@ -62,6 +63,9 @@ class ThermostabilityPregeneratedDataset(Dataset):
         with open(os.path.join(self.sequences_dir, filename), "rb") as f:
             s_s = torch.load(f) 
 
+
+        if self.usePerProteinRep:
+            s_s = torch.mean(s_s, 0)
         return s_s, torch.tensor(float(thermo), dtype=torch.float32)
 
         
