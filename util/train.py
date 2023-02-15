@@ -21,6 +21,7 @@ def train_model(
     max_gradient_clip: float = 10,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
+    label=""
 ):
     optimizer = scheduler.optimizer
     since = time.time()
@@ -154,8 +155,8 @@ def train_model(
         )
         train_size =dataset_sizes["train"]
         val_size = dataset_sizes["val"]
-        plotPath = f"results/predictions_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
-        pl.title(f"Loss: {best_epoch_loss}")
+        plotPath = f"results/predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
+        pl.title(f"Loss: {best_epoch_loss}, {label}")
         pl.xlabel("Predictions")
         pl.ylabel("Labels")
         pl.savefig(plotPath)

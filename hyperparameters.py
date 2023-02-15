@@ -98,7 +98,8 @@ def run_train_experiment(config: dict = None, use_wandb = True):
         dataset_sizes,
         use_wandb,
         num_epochs=config["epochs"],
-        prepare_labels=lambda x: x.to("cuda:1")
+        prepare_labels=lambda x: x.to("cuda:1"),
+        label=representation_key
     )
     return score
 
