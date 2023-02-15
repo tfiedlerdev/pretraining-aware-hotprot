@@ -37,6 +37,7 @@ from util.train import train_model
 def run_train_experiment(config: dict = None, use_wandb=True):
     representation_key = config["representation_key"]
     model_parallel = config["model_parallel"]
+    val_on_trainset = config["val_on_trainset"] =="true"
     limit = config["dataset_limit"]
     train_ds = (
         UniProtDataset("train.csv", limit=limit)
@@ -44,7 +45,8 @@ def run_train_experiment(config: dict = None, use_wandb=True):
         else ThermostabilityPregeneratedDataset("train.csv", limit=limit, usePerProteinRep=True) if representation_key=="s_s_0_avg"
         else ThermostabilityDataset("train.csv", limit=limit)   )
     
-    valFileName =  "train.csv" if config["val_on_trainset"] else "val.csv"
+    valFileName =  "train.csv" if val_on_trainset else "val.csv"
+    print("valFileName",valFileName)
     eval_ds = (
         UniProtDataset(
            valFileName,
@@ -141,8 +143,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_hidden_layers", type=int, required=True)
     parser.add_argument("--model_first_hidden_units", type=int, required=True)
     parser.add_argument("--epochs", type=int, required=True)
-    parser.add_argument("--val_on_trainset", type=bool)
-    parser.add_argument("--dataset_limit", type=int, default=100000)
+    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"])
+    parser.add_argument("--dataset_limit", type=int, default=1000000)
     parser.add_argument("--optimizer", type=str)
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--model", type=str)
