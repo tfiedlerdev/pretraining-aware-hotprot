@@ -17,13 +17,13 @@ class DenseModel(nn.Module):
     ):
         super().__init__()
         # input shape [1024]
-        input_shape = 1024
+        self.input_shape = 1024
         self.dropout_rate = dropout_rate
 
-        hidden_layers = self.create_hidden_layers(layers, input_shape, 16)
+        hidden_layers = self.create_hidden_layers(layers, self.input_shape*3, 16)
 
         self.thermo_module_regression = torch.nn.Sequential(
-            nn.LayerNorm(input_shape),
+            nn.LayerNorm(self.input_shape),
             hidden_layers,
             nn.Linear(16, 1),
         )
@@ -31,20 +31,24 @@ class DenseModel(nn.Module):
 
     def create_hidden_layers(self,num:int, input_size:int, output_size:int) -> nn.Module:
         if num == 1:
-            return nn.Sequential(nn.Linear(input_size, output_size), nn.ReLU())
+            return nn.Sequential(nn.Linear(self.input_shape, output_size), nn.ReLU())
         
         result = []
-        for i in range(num-1):
+        result.append((str(0),nn.Linear(self.input_shape, input_size)))
+        result.append((str(1),nn.ReLU()))
+        result.append((str(2),nn.Dropout(p=self.dropout_rate)))
+
+        for i in range(1, num-1):
             print(input_size)
             _output_size = int(input_size/2)
             layer = nn.Linear(input_size, _output_size)
-            result.append((str(i*2),layer))
-            result.append((str(i*2+1),nn.ReLU()))
-            result.append((str(i*2+2),nn.Dropout(p=self.dropout_rate)))
+            result.append((str(i*3),layer))
+            result.append((str(i*3+1),nn.ReLU()))
+            result.append((str(i*3+2),nn.Dropout(p=self.dropout_rate)))
             input_size = _output_size
         
-        result.append((str((num-1)*2),nn.Linear(input_size, output_size)))
-        result.append((str((num-1)*2+1),nn.ReLU()))
+        result.append((str((num-1)*3),nn.Linear(input_size, output_size)))
+        result.append((str((num-1)*3+1),nn.ReLU()))
 
         return nn.Sequential(OrderedDict(result))
 
