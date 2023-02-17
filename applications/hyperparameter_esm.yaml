@@ -1,6 +1,12 @@
 program: train.py
 method: grid
 name: esm2_avg_representations
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --wandb
 metric:
   name: mse_loss
   goal: minimize

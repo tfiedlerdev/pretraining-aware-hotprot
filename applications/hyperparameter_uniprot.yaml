@@ -1,6 +1,12 @@
 program: train.py
 method: bayes
 name: new_model50
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --wandb
 metric:
   name: mse_loss
   goal: minimize
