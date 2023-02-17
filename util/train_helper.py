@@ -1,15 +1,10 @@
 import torch
 import time
-import copy
 from torch import nn as nn
 from tqdm.notebook import tqdm
 import sys
 import wandb
-import pylab as pl
 from typing import Callable
-from util.telegram import TelegramBot
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 
@@ -62,25 +57,23 @@ def train_model(
     criterion: nn.modules.loss._Loss,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     dataloaders,
-    dataset_sizes,
     use_wandb,
     num_epochs=25,
     best_model_path: str=None,
     max_gradient_clip: float = 10,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
-    label="",
 ):
     optimizer = scheduler.optimizer
     since = time.time()
     
     if best_model_path:
         torch.save(model, best_model_path)
-    best_epoch_mad = sys.float_info.max
+    best_val_mad = sys.float_info.max
     best_epoch_loss = sys.float_info.max
     best_epoch_predictions = torch.tensor([])
     best_epoch_actuals = torch.tensor([])
-    epoch_losses  = {"train":[], "val":[]}
+    epoch_mads  = {"train":[], "val":[]}
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}/{num_epochs - 1}")
         print("-" * 10)
@@ -128,10 +121,9 @@ def train_model(
                     on_batch_done=on_batch_done,
                     optimizer=optimizer
                 )
-            epoch_losses[phase].append(epoch_loss)
+            epoch_mads[phase].append(epoch_mad)
 
-            if epoch_mad < best_epoch_mad:
-                best_epoch_mad = epoch_mad
+            
             if use_wandb:
                 wandb.log(
                     {
@@ -146,6 +138,8 @@ def train_model(
             if phase == "val":
                 if use_wandb:
                     wandb.log({"mse_loss": epoch_loss})
+                if epoch_mad < best_val_mad:
+                    best_val_mad = epoch_mad
                 if epoch_loss < best_epoch_loss:
                     best_epoch_loss = epoch_loss
                     if best_model_path:
@@ -163,4 +157,4 @@ def train_model(
     if best_model_path:
         model = torch.load(best_model_path)
     
-    return model, best_epoch_loss, best_epoch_mad ,epoch_losses,best_epoch_actuals, best_epoch_predictions
+    return model, best_epoch_loss, best_val_mad ,epoch_mads,best_epoch_actuals, best_epoch_predictions
