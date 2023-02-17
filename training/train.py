@@ -8,7 +8,8 @@ import wandb
 import pylab as pl
 from typing import Callable
 from util.telegram import TelegramBot
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def train_model(
     model,
@@ -27,10 +28,10 @@ def train_model(
     telegram = TelegramBot()
     optimizer = scheduler.optimizer
     since = time.time()
-    best_model_path = "results/best_model.pt"
+    best_model_path = f"results/{label}_best_model.pt"
     if return_best_model:
         torch.save(model, best_model_path)
-
+    best_epoch_mad = sys.float_info.max
     best_epoch_loss = sys.float_info.max
     losses = []
     batchEnumeration = []
@@ -126,12 +127,14 @@ def train_model(
                         ),
                         end="\r",
                     )
-
+            epoch_mad = epoch_mad / len(dataloaders[phase])
+            if epoch_mad <best_epoch_mad:
+                best_epoch_mad = epoch_mad
             if use_wandb:
                 wandb.log(
                     {
                         f"mean_abs_diff_{phase}": mean_abs_diff,
-                        f"epoch_mad_{phase}": epoch_mad / len(dataloaders[phase]),
+                        f"epoch_mad_{phase}": epoch_mad,
                     }
                 )
             if phase == "train":
@@ -177,16 +180,29 @@ def train_model(
         table = wandb.Table(data=data, columns=["predictions", "labels"])
         wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
     else:
+        preds = bestEpochPredictions.squeeze().tolist()
+        actuals = bestEpochLabels.squeeze().tolist()
         pl.scatter(
-            bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
+            preds, actuals
         )
         train_size = dataset_sizes["train"]
         val_size = dataset_sizes["val"]
-        plotPath = f"results/predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
-        pl.title(f"Loss: {best_epoch_loss}, {label}")
+        fileName = f"predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
+        plotPath = f"results/{fileName}"
+        title = f"Loss: {best_epoch_loss: .2f}, {label}, mad {best_epoch_mad: .2f}"
+        pl.title(title)
         pl.xlabel("Predictions")
         pl.ylabel("Labels")
         pl.savefig(plotPath)
+
+        fig, ax = plt.subplots()
+        
+        ax = sns.regplot(x=preds, y=actuals, label=title, ax=ax)
+        
+        ax.set_xlabel("Predictions")
+        ax.set_ylabel("Actuals")
+        seabornPath = f"results/seaborn_{fileName}"
+        fig.savefig(seabornPath)
         telegram.send_photo(plotPath, "scatter plot")
         print(f"Saved predictions as scatter plot at {plotPath}")
     return model, best_epoch_loss
