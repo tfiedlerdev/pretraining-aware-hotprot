@@ -61,7 +61,7 @@ def generate_representations(dir_path, sequences):
                     file = str(maxFilePrefix)+".pt"
                     if not os.path.exists(file):
                         with open(os.path.join("data/s_s", file), "wb") as f:
-                            torch.save(data.cpu(),f)
+                            torch.save(data.mean(0).cpu(),f)
                         csv.write(f"{inputs[s]}, {file}\n") 
         if index %5 == 0:
             secsSpent = time.time()- timeStart  
