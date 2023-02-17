@@ -10,10 +10,10 @@
 
 ## Setup
 These steps can be taken to setup the project on a linux machine.
-1. Clone the repo with 'git clone https://github.com/LeonHermann322/hot-prot.git --recurse --submodules'
+1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse --submodules`
 2. `conda env create -f environment.yml`
 3. `conda activate hotprot`
-4. You then have to manually install openfold and fair-esm
+4. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
 ```sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 pip install fair-esm
@@ -23,11 +23,11 @@ pip install openfold@git+https://github.com/aqlaboratory/openfold.git@4b41059694
 ```
 
 ### Imports
-- If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to '${workspaceFolder}'
+- If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to `${workspaceFolder}`
 - To make the relative imports work set the Env Variable to your current project dir, e.g 
-'''sh
+```sh
 export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
-'''
+```
 
 ### Dataset
 
@@ -39,9 +39,16 @@ export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
 
 ## Train with hyperparamers with wandb
 
-1. Edit the configuration in the 'training/hyperparameter_esm.yaml' if you like to
-2. Then run 'wandb sweep training/hyperparameter_esm.yaml' 
+1. Edit the configuration in the `training/hyperparameter_esm.yaml` if you like to
+2. Then run `wandb sweep training/hyperparameter_esm.yaml`
 3. You'll be prompted to run the agent by wandb. You will also be provided with a link where you can see immediate results
+
+
+## Errors 
+1. `GLIBCXX_3.4.30' not found' - set your LD_LIBRARY_PATH to your conda environment, i.e 
+```sh
+EXPORT LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/anaconda3/envs/hotprot/lib
+```
 
 
 
