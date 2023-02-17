@@ -39,8 +39,9 @@ def run_train_experiment(config: dict = None, use_wandb=True):
     model_parallel = config["model_parallel"] =="true"
     val_on_trainset = config["val_on_trainset"] =="true"
     limit = config["dataset_limit"]
+    seq_length= config["seq_length"]
     train_ds = (
-        UniProtDataset("train.csv", limit=limit)
+        UniProtDataset("train.csv", limit=limit, seq_length=seq_length)
         if representation_key == "uni_prot"
         else ThermostabilityPregeneratedDataset("train.csv", limit=limit, usePerProteinRep=True) if representation_key=="s_s_0_avg"
         else ThermostabilityDataset("train.csv", limit=limit)   )
@@ -50,7 +51,8 @@ def run_train_experiment(config: dict = None, use_wandb=True):
     eval_ds = (
         UniProtDataset(
            valFileName,
-            limit=limit
+            limit=limit,
+            seq_length=seq_length
         )
         if representation_key == "uni_prot"
         else ThermostabilityPregeneratedDataset(valFileName, limit=limit, usePerProteinRep=True) if representation_key=="s_s_0_avg"
@@ -155,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--representation_key", type=str, default="uni_prot")
     parser.add_argument("--model_dropoutrate", type=float, default=0.3)
     parser.add_argument("--weight_regularizer", type=bool, default=True)
+    parser.add_argument("--seq_length", type=int, default=100000)
     args = parser.parse_args()
 
     argsDict = vars(args)

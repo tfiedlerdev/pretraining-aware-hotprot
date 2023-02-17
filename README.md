@@ -13,6 +13,12 @@ Run
 1. `conda env create -f environment.yml`
 2. `conda activate hotprot`
 ## Steps Taken
+## Imports
+- If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to '${workspaceFolder}'
+- To make the relative imports work set the Env Variable to your current project dir, e.g 
+'''sh
+export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
+'''
 
 ### Dataset
 
@@ -26,3 +32,4 @@ Run
 - [ ] TODO: find out which layers we want the embeddings of
 
 Run `python esm-main/scripts/extract.py esm2_t33_650M_UR50D FLIP/eval_sequences.fasta esm_embeddings/default_repr_layers/per_tok/eval --include per_tok` to create protein embeddings from ESM
+
