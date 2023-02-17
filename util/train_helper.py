@@ -37,7 +37,7 @@ def execute_epoch(
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
         # statistics
         batch_size = len(inputs)
-        batch_loss = loss.item() * batch_size
+        batch_loss = loss.item()
 
         running_loss += batch_loss
         mean_abs_diff = (
@@ -45,7 +45,7 @@ def execute_epoch(
         )
         epoch_mad += mean_abs_diff
         running_mad = epoch_mad / (idx + 1)
-        on_batch_done(idx, outputs, loss / float(batch_size), running_mad)
+        on_batch_done(idx, outputs, loss, running_mad)
 
     epoch_mad = epoch_mad / len(dataloader)
     epoch_loss = running_loss / len(dataloader)
@@ -96,7 +96,7 @@ def train_model(
                             f"Nan loss: {torch.isnan(loss)}| Loss: {loss}"
                         )
                 tqdm.write(
-                    "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, epoch abs diff mean {:.6f}".format(
+                    "Epoch: [{}/{}], Batch: [{}/{}], batch loss: {:.6f}, epoch abs diff mean {:.6f}".format(
                         epoch,
                         num_epochs,
                         idx + 1,
