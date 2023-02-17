@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-import wandb
 from torch import nn as nn
 import pylab as pl
 import seaborn as sns
@@ -50,7 +49,7 @@ def plot_advanced_scatter(predictions,actuals, outPath):
     fig = plt.figure()
     ax = fig.add_axes([.1, .1, .8, .8])
 
-    ax.plot(x, y, 'o', color = 'royalblue')
+    ax.plot(x, y, 'o', color = 'royalblue', alpha=0.1)
     ax.plot(x_line, y_line, color = 'royalblue')
     ax.fill_between(x_line, y_line + pi, y_line - pi, color = 'lightcyan', label = '95% prediction interval')
     ax.fill_between(x_line, y_line + ci, y_line - ci, color = 'skyblue', label = '95% confidence interval')
@@ -73,7 +72,7 @@ def plot_advanced_scatter(predictions,actuals, outPath):
 def plot_predictions(out_base_label: str, plot_title: str,preds: "list[float]", actuals: "list[float]",  output_dir ="results"):
    
     pl.scatter(
-        preds, actuals, alpha=0.3
+        preds, actuals, alpha=0.15
     )
     fileName = f"{out_base_label}.png"
     os.makedirs(output_dir, exist_ok=True)
@@ -93,4 +92,4 @@ def plot_predictions(out_base_label: str, plot_title: str,preds: "list[float]", 
     fig.savefig(seabornPath)
     advancedPath = os.path.join(output_dir,f"advanced_{fileName}")
     plot_advanced_scatter(preds, actuals, advancedPath)
-    print(f"Saved predictions as scatter plot at {plotPath}, at seaborn scatter at {seabornPath} and advanced {advancedPath}")
+    print(f"Saved predictions as \n- scatter plot {plotPath}\n- seaborn scatter {seabornPath}\n- advanced scatter {advancedPath}")
