@@ -1,4 +1,4 @@
-program: hyperparameters.py
+program: train.py
 method: grid
 name: esm2_avg_representations
 metric:

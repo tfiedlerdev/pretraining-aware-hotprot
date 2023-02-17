@@ -1,4 +1,4 @@
-program: hyperparameters.py
+program: train.py
 method: bayes
 name: new_model50
 metric:
