@@ -1,0 +1,31 @@
+program: hyperparameters.py
+method: bayes
+name: new_model50
+metric:
+  name: mse_loss
+  goal: minimize
+parameters:
+  learning_rate:
+    min: 0.001
+    max: 0.5
+  model_hidden_layers:
+    values: [2,3,4]
+  model_first_hidden_units:
+    values: [2048]
+  model_dropoutrate:
+    min: 0.0
+    max: 0.5
+  epochs:
+    values: [50]
+  val_on_trainset:
+    values: ["false"]
+  weight_regularizer:
+    values: ["true", "false"]
+  optimizer: 
+    values: ["sgd", "adam"]
+  model: 
+    values: ["uni_prot"]
+  batch_size: 
+    values: [8]
+  representation_key: 
+    values: ["uni_prot"]

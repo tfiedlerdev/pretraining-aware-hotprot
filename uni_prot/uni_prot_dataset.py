@@ -11,18 +11,18 @@ import h5py
 
 class UniProtDataset(Dataset):
     def __init__(
-        self, dataset_filename: str = "train.csv", limit: int = 10000000
+        self, dataset_filename: str = "train.csv", limit: int = 10000000, seq_length= 100000
     ) -> None:
         super().__init__()
-        self.cacheFile = f"data/uni_prot/cache_{dataset_filename.split('.')[0]}"
+        self.cacheFile = f"data/uni_prot/cache_{dataset_filename.split('.')[0]}_{seq_length}"
         self.limit = limit
-
+        
         if not os.path.exists(self.cacheFile):
 
             with open(f"data/s_s/{dataset_filename}", "r") as csv_file:
                 csv_seqs = csv.reader(csv_file, delimiter=",", skipinitialspace=True)
                 self.seqs = [
-                    seq for (i, (seq, thermo)) in enumerate(csv_seqs) if i != 0
+                    seq for (i, (seq, thermo)) in enumerate(csv_seqs) if i != 0 and len(seq) <= seq_length
                 ]
                 print(f"Seqs in {dataset_filename}: {len(self.seqs)} ")
                 self.seqs = set(self.seqs)
