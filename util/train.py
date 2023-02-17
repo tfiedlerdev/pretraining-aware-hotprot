@@ -177,16 +177,21 @@ def train_model(
         table = wandb.Table(data=data, columns=["predictions", "labels"])
         wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
     else:
+        preds = bestEpochPredictions.squeeze().tolist()
+        actuals = bestEpochLabels.squeeze().tolist()
         pl.scatter(
-            bestEpochPredictions.squeeze().tolist(), bestEpochLabels.squeeze().tolist()
+            preds, actuals
         )
         train_size = dataset_sizes["train"]
         val_size = dataset_sizes["val"]
-        plotPath = f"results/predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
+        fileName = f"predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}.png"
+        plotPath = f"results/{fileName}"
+        #seabornPath = f"results/seaborn_{fileName}"
         pl.title(f"Loss: {best_epoch_loss}, {label}")
         pl.xlabel("Predictions")
         pl.ylabel("Labels")
         pl.savefig(plotPath)
+        #sns.regplot(preds, actuals)
         telegram.send_photo(plotPath, "scatter plot")
         print(f"Saved predictions as scatter plot at {plotPath}")
     return model, best_epoch_loss
