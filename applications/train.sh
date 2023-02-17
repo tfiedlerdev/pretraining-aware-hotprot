@@ -8,4 +8,5 @@
 
 eval "$(conda shell.bash hook)"
 conda activate hotshot
-srun wandb agent hotprot/hot-prot/w6jrn3ip
+export PYTHONPATH="/hpi/fs00/home/hoangan.nguyen/hot-prot"
+srun wandb agent hotprot/hot-prot-training/8ctvhmc2
