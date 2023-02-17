@@ -5,7 +5,7 @@ import wandb
 from torch import nn as nn
 import pylab as pl
 import seaborn as sns
-
+import os
 
 def plot_advanced_scatter(predictions,actuals, outPath):
     x = predictions
@@ -70,37 +70,27 @@ def plot_advanced_scatter(predictions,actuals, outPath):
     plt.legend(bbox_to_anchor=(1, .25), fontsize=12)
     plt.savefig(outPath)
 
-def plot_predictions(out_base_label: str, plot_title: str,preds: "list[float]", actuals: "list[float]", use_wandb: bool):
-    if use_wandb:
-        data = [
-            [x, y]
-            for (x, y) in zip(
-                preds,
-                actuals,
-            )
-        ]
-        table = wandb.Table(data=data, columns=["predictions", "labels"])
-        wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
-    else:
-        pl.scatter(
-            preds, actuals
-        )
-        fileName = f"{out_base_label}.png"
-        plotPath = f"results/{fileName}"
-        
-        pl.title(plot_title)
-        pl.xlabel("Predictions")
-        pl.ylabel("Labels")
-        pl.savefig(plotPath)
-
-        fig, ax = plt.subplots()
-        
-        ax = sns.regplot(x=preds, y=actuals, label=plot_title, ax=ax)
-        
-        ax.set_xlabel("Predictions")
-        ax.set_ylabel("Actuals")
-        seabornPath = f"results/seaborn_{fileName}"
-        fig.savefig(seabornPath)
-        advancedPath = f"results/advanced_{fileName}"
-        plot_advanced_scatter(preds, actuals, advancedPath)
-        print(f"Saved predictions as scatter plot at {plotPath}, at seaborn scatter at {seabornPath} and advanced {advancedPath}")
+def plot_predictions(out_base_label: str, plot_title: str,preds: "list[float]", actuals: "list[float]",  output_dir ="results"):
+   
+    pl.scatter(
+        preds, actuals, alpha=0.3
+    )
+    fileName = f"{out_base_label}.png"
+    os.makedirs(output_dir, exist_ok=True)
+    plotPath = os.path.join(output_dir,f"{fileName}")
+    
+    pl.title(plot_title)
+    pl.xlabel("Predictions")
+    pl.ylabel("Labels")
+    pl.savefig(plotPath)
+    fig, ax = plt.subplots()
+    
+    ax = sns.regplot(x=preds, y=actuals, label=plot_title, ax=ax)
+    
+    ax.set_xlabel("Predictions")
+    ax.set_ylabel("Actuals")
+    seabornPath = os.path.join(output_dir,f"seaborn_{fileName}")
+    fig.savefig(seabornPath)
+    advancedPath = os.path.join(output_dir,f"advanced_{fileName}")
+    plot_advanced_scatter(preds, actuals, advancedPath)
+    print(f"Saved predictions as scatter plot at {plotPath}, at seaborn scatter at {seabornPath} and advanced {advancedPath}")

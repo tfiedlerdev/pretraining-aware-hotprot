@@ -10,7 +10,7 @@ from typing import Callable
 from util.telegram import TelegramBot
 import seaborn as sns
 import matplotlib.pyplot as plt
-from util.plotting import plot_predictions
+
 
 
 def execute_epoch(
@@ -54,7 +54,7 @@ def execute_epoch(
 
     epoch_mad = epoch_mad / len(dataloader)
     epoch_loss = running_loss / len(dataloader)
-    return epoch_loss, epoch_mad, epoch_actuals, epoch_predictions
+    return epoch_loss, epoch_mad, epoch_actuals.squeeze().tolist(), epoch_predictions.squeeze().tolist()
 
 
 def train_model(
@@ -65,7 +65,7 @@ def train_model(
     dataset_sizes,
     use_wandb,
     num_epochs=25,
-    return_best_model=True,
+    best_model_path: str=None,
     max_gradient_clip: float = 10,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
@@ -73,14 +73,14 @@ def train_model(
 ):
     optimizer = scheduler.optimizer
     since = time.time()
-    best_model_path = f"results/{label}_best_model.pt"
-    if return_best_model:
+    
+    if best_model_path:
         torch.save(model, best_model_path)
     best_epoch_mad = sys.float_info.max
     best_epoch_loss = sys.float_info.max
-    bestEpochPredictions = torch.tensor([])
-    bestEpochLabels = torch.tensor([])
-
+    best_epoch_predictions = torch.tensor([])
+    best_epoch_actuals = torch.tensor([])
+    epoch_losses  = {"train":[], "val":[]}
     for epoch in range(num_epochs):
         print(f"Epoch {epoch}/{num_epochs - 1}")
         print("-" * 10)
@@ -100,7 +100,7 @@ def train_model(
                         optimizer.step()
                     if torch.isnan(loss).any():
                         print(
-                            f"Nan loss: {torch.isnan(loss)}| Loss: {loss}| inputs: {inputs}"
+                            f"Nan loss: {torch.isnan(loss)}| Loss: {loss}"
                         )
                 tqdm.write(
                     "Epoch: [{}/{}], Batch: [{}/{}], loss: {:.6f}, epoch abs diff mean {:.6f}".format(
@@ -128,6 +128,7 @@ def train_model(
                     on_batch_done=on_batch_done,
                     optimizer=optimizer
                 )
+            epoch_losses[phase].append(epoch_loss)
 
             if epoch_mad < best_epoch_mad:
                 best_epoch_mad = epoch_mad
@@ -147,11 +148,11 @@ def train_model(
                     wandb.log({"mse_loss": epoch_loss})
                 if epoch_loss < best_epoch_loss:
                     best_epoch_loss = epoch_loss
-                    if return_best_model:
+                    if best_model_path:
                         torch.save(model, best_model_path)
 
-                    bestEpochLabels = epoch_actuals
-                    bestEpochPredictions = epoch_predictions
+                    best_epoch_actuals = epoch_actuals
+                    best_epoch_predictions = epoch_predictions
         print()
 
     time_elapsed = time.time() - since
@@ -159,17 +160,7 @@ def train_model(
     print(f"Best val Acc: {best_epoch_loss:4f}")
 
     # load best model weights
-    if return_best_model:
+    if best_model_path:
         model = torch.load(best_model_path)
-    preds = bestEpochPredictions.squeeze().tolist()
-    actuals = bestEpochLabels.squeeze().tolist()
-    train_size = dataset_sizes["train"]
-    val_size = dataset_sizes["val"]
-    plot_predictions(
-        f"predictions_{label}_epochs{num_epochs}_gradClip{max_gradient_clip}_trainSize{train_size}_valSize{val_size}",
-        f"Loss: {best_epoch_loss: .2f}, {label}, mad {best_epoch_mad: .2f}",
-        preds,
-        actuals,
-        use_wandb,
-    )
-    return model, best_epoch_loss
+    
+    return model, best_epoch_loss, best_epoch_mad ,epoch_losses,best_epoch_actuals, best_epoch_predictions

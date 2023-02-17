@@ -32,10 +32,9 @@ def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]")
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
-    def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000, usePerProteinRep = False) -> None:
+    def __init__(self, dsFilePath: str = "data/train.csv", limit: int = 100000, usePerProteinRep = False) -> None:
         super().__init__()
 
-        dsFilePath = os.path.join("data/s_s/", dataset_filename)
         if not os.path.exists(dsFilePath):
             raise Exception(f"{dsFilePath} does not exist.")
 
@@ -50,8 +49,8 @@ class ThermostabilityPregeneratedDataset(Dataset):
         
             self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
-            print(f"Omitted {diff} sequences of {dataset_filename} because they have not been pregenerated")
-        self.sequences_dir = "data/s_s"
+            print(f"Omitted {diff} sequences of {os.path.basename(dsFilePath)} because they have not been pregenerated")
+        self.representations_dir = "data/s_s"
         self.usePerProteinRep = usePerProteinRep
 
     def __len__(self):
@@ -60,10 +59,9 @@ class ThermostabilityPregeneratedDataset(Dataset):
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]
         
-        with open(os.path.join(self.sequences_dir, filename), "rb") as f:
+        with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f) 
-
-
+            
         if self.usePerProteinRep:
             s_s = torch.mean(s_s, 0)
         return s_s, torch.tensor(float(thermo), dtype=torch.float32)

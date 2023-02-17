@@ -10,7 +10,7 @@ class ThermostabilityDataset(Dataset):
     def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000, max_seq_len: int=700) -> None:
         super().__init__()
 
-        dsFilePath = os.path.join("data/s_s/", dataset_filename)
+        dsFilePath = os.path.join("data/", dataset_filename)
         if not os.path.exists(dsFilePath):
             raise Exception(f"{dsFilePath} does not exist.")
 
@@ -20,7 +20,6 @@ class ThermostabilityDataset(Dataset):
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
             self.seq_thermos = [(seq,thermo) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0 and len(seq)<=max_seq_len]
 
-        self.sequences_dir = "data/s_s"
 
     def __len__(self):
         return min(len(self.seq_thermos), self.limit)
