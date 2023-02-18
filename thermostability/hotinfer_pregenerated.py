@@ -50,7 +50,7 @@ class HotInferPregeneratedFC(nn.Module):
    
         self.thermo_module_regression = torch.nn.Sequential(
             nn.Flatten(),
-            nn.LayerNorm(input_len ),
+            nn.LayerNorm(input_len),
             nn.Linear(input_len , first_hidden_size),
             nn.ReLU(),
             self.create_hidden_layers(num_hidden_layers, first_hidden_size,16, p_dropout),

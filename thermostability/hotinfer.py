@@ -4,117 +4,64 @@ from esm_custom import esm
 from typing import List
 import os
 import pickle
-
-
-class HotInfer(nn.Module):
-    def __init__(
-        self,
-        rnn_hidden_size=128,
-        rnn_hidden_layers=2,
-        nonlinearity_rnn="relu",
-        nonlinearity_thermomodule=nn.ReLU(),
-    ):
-        super().__init__()
-        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.esmfold = esm.pretrained.esmfold_v1()
-        # cfg = self.esm.cfg
-        # s_s shape torch.Size([1, sequence_len, 1024])
-        # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
-
-        self.thermo_module_rnn = torch.nn.RNN(
-            input_size=1024,
-            hidden_size=rnn_hidden_size,
-            num_layers=rnn_hidden_layers,
-            nonlinearity=nonlinearity_rnn,
-            batch_first=True,
-            bidirectional=False,
-        )
-
-        self.thermo_module_regression = torch.nn.Sequential(
-            nn.Flatten(),
-            nn.LayerNorm(rnn_hidden_layers * rnn_hidden_size),
-            nn.Linear(rnn_hidden_layers * rnn_hidden_size, 128),
-            nonlinearity_thermomodule,
-            nn.Linear(128, 64),
-            nonlinearity_thermomodule,
-            nn.Linear(64, 16),
-            nonlinearity_thermomodule,
-            nn.Linear(16, 1),
-        )
-
-        # self.thermo_module_rnn = thermo_module_rnn.to(self.device)
-        # self.thermo_module_regression = thermo_module_regression.to(self.device)
-
-    def forward(self, sequences: List[str]):
-        with torch.no_grad():
-            esm_output = self.esmfold.infer(sequences=sequences)
-            s_s = esm_output["s_s"]
-
-        _, rnn_hidden = self.thermo_module_rnn(s_s)
-        thermostability = self.thermo_module_regression(
-            torch.transpose(rnn_hidden, 0, 1)
-        )
-
-        return thermostability
-
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
-
-class HotInferModelParallel(nn.Module):
+import csv
+class HotInferModel(nn.Module):
     def __init__(
         self,
         representation_key: RepresentationKey,
         thermo_module: nn.Module = HotInferPregeneratedFC(), 
-        pad_representations = False
+        pad_representations = False,
+        model_parallel=False
     ):
         super().__init__()
-        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.esmfold = esm.pretrained.esmfold_v1().to("cuda:0")
-        # cfg = self.esm.cfg
-        # s_s shape torch.Size([1, sequence_len, 1024])
-        # s_z shape torch.Size([1, sequence_len, sequence_len, 128])
+        self.model_parallel = model_parallel
 
-        self.thermo_module = thermo_module.to("cuda:1")
+        self.esmfold = esm.pretrained.esmfold_v1()
+        self.thermo_module = thermo_module
+
+        if model_parallel:
+            self.esmfold.to("cuda:0")
+            self.thermo_module.to("cuda:1")
 
         self.representation_key = representation_key
         
-        meta_dir = f"data/{representation_key}"
-        os.makedirs(meta_dir, exist_ok=True)
-        self.meta_filepath = os.path.join(meta_dir, "meta.pickle")
-        if os.path.exists(self.meta_filepath):
-            with open(self.meta_filepath, "rb") as f:
-                self.meta = pickle.load(f)
+        self.representations_dir = f"../data/{representation_key}"
+        os.makedirs(self.representations_dir, exist_ok=True)
+        self.sequences_filepath = os.path.join(self.representations_dir, "sequences.csv")
+        if os.path.exists(self.sequences_filepath):
+            with open(self.sequences_filepath, "r") as f:
+                reader = csv.reader(f, delimiter=",", skipinitialspace=True)
+                self.meta = dict([(seq, filename) for i, (seq, filename) in enumerate(reader) if i!=0])
         else:
             self.meta = {}
 
         self.pad_representations = pad_representations
 
     def forward(self, sequences: List[str]):
-        # TODO: optimize (run esmfold for samples while thermomodule runs, replace esmfold by esm2)
         with torch.no_grad():
             reprs =[]
             for seq in sequences:
                 repr = None
-                cacheDir = os.path.join("data", self.representation_key)
-                
                 if seq in self.meta:
                     repr = torch.load(
-                   os.path.join(cacheDir, self.meta[seq])
+                   os.path.join(self.representations_dir, self.meta[seq])
                 )
                 else:
                     outputs = self.esmfold.infer(sequences=[seq], representation_key=self.representation_key)
                     repr = outputs[self.representation_key].squeeze()
                     cacheFileName = f"{len(self.meta.keys())+1}.pt"
                     
-                    with open(self.meta_filepath, "wb") as f:
-                        os.makedirs(cacheDir, exist_ok=True)
-                        torch.save(repr, os.path.join(cacheDir, cacheFileName))
-                        pickle.dump(self.meta, f)
+                    with open(self.sequences_filepath, "a") as f:
+                        torch.save(repr, os.path.join(self.representations_dir, cacheFileName))
+                        f.write(f"{seq}, {cacheFileName}\n")
                         self.meta[seq] = cacheFileName
                         
                 reprs.append(zero_padding_700(repr) if self.pad_representations else repr)
-            reprBatch = torch.stack(reprs).to("cuda:1")
+            reprBatch = torch.stack(reprs).to("cuda:1" if self.model_parallel else "cuda:0")
+         
 
         return self.thermo_module(reprBatch)
 

@@ -6,19 +6,12 @@ from torch.optim import lr_scheduler
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
 )
-from thermostability.hotinfer import HotInferModelParallel
+from thermostability.hotinfer import HotInferModel
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
-from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregenerated
-from tqdm.notebook import tqdm
-import sys
+from thermostability.cnn_pregenerated import CNNPregeneratedFC
 from thermostability.thermo_dataset import ThermostabilityDataset
-from thermostability.thermo_pregenerated_dataset import (
-    zero_padding_collate,
-    zero_padding700_collate,
-)
 import wandb
 import argparse
-import pylab as pl
 import os 
 
 cudnn.benchmark = True
@@ -45,9 +38,9 @@ def run_train_experiment(results_path, config: dict = None, use_wandb=True):
         UniProtDataset("data/train.csv", limit=limit, seq_length=seq_length)
         if representation_key == "uni_prot"
         else ThermostabilityPregeneratedDataset(
-            "data/train.csv", limit=limit, usePerProteinRep=True
+            "data/train.csv", limit=limit,representation_key=representation_key
         )
-        if representation_key == "s_s_0_avg"
+        if representation_key == "s_s_0_avg" or representation_key=="s_s_avg"
         else ThermostabilityDataset("data/train.csv", limit=limit)
     )
 
@@ -57,9 +50,9 @@ def run_train_experiment(results_path, config: dict = None, use_wandb=True):
         UniProtDataset(valFileName, limit=limit, seq_length=seq_length)
         if representation_key == "uni_prot"
         else ThermostabilityPregeneratedDataset(
-            valFileName, limit=limit, usePerProteinRep=True
+            valFileName, limit=limit,representation_key=representation_key
         )
-        if representation_key == "s_s_0_avg"
+        if representation_key == "s_s_0_avg" or representation_key=="s_s_avg"
         else ThermostabilityDataset(valFileName, limit=limit)
     )
     dataloaders = {
@@ -83,6 +76,7 @@ def run_train_experiment(results_path, config: dict = None, use_wandb=True):
         "uni_prot": 1024,
         "s_s_0_A": 148 * 1024,
         "s_s_0_avg": 1024,
+        "s_s_avg": 1024
     }
 
     input_size = input_sizes[representation_key]
@@ -104,7 +98,7 @@ def run_train_experiment(results_path, config: dict = None, use_wandb=True):
     model = (
         thermo
         if not model_parallel
-        else HotInferModelParallel(representation_key, thermo_module=thermo)
+        else HotInferModel(representation_key, thermo_module=thermo)
     )
     if not model_parallel:
         model = model.to("cuda:0")
@@ -170,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="fc", choices=["fc", "cnn"])
     parser.add_argument("--model_parallel", type=str, choices=["true", "false"])
     parser.add_argument("--wandb", action="store_true")
-    parser.add_argument("--representation_key", type=str, default="uni_prot")
+    parser.add_argument("--representation_key", type=str, default="s_s_avg")
     parser.add_argument("--model_dropoutrate", type=float, default=0.3)
     parser.add_argument("--weight_regularizer", type=bool, default=True)
     parser.add_argument("--seq_length", type=int, default=700)

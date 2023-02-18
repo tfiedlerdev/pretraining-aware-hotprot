@@ -92,4 +92,10 @@ def plot_predictions(out_base_label: str, plot_title: str,preds: "list[float]", 
     fig.savefig(seabornPath)
     advancedPath = os.path.join(output_dir,f"advanced_{fileName}")
     plot_advanced_scatter(preds, actuals, advancedPath)
+
+    plt.clf()
+    plt.hist(np.subtract(preds, actuals), label="Frequency of differences of predicted vs actual melting points (°C)", bins=100)
+    pl.xlabel("Difference predicted - actual melting point")
+    pl.ylabel("Frequency")
+    plt.savefig(os.path.join(output_dir, "hist.png"))
     print(f"Saved predictions as \n- scatter plot {plotPath}\n- seaborn scatter {seabornPath}\n- advanced scatter {advancedPath}")

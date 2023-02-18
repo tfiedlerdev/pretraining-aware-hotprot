@@ -1,20 +1,9 @@
 import argparse
 from torch.utils.data import Dataset
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-import torch.backends.cudnn as cudnn
-from torch.utils.data import random_split
-import numpy as np
-import matplotlib.pyplot as plt
 import time
 import os
-import copy
-from thermostability.thermo_dataset import ThermostabilityDataset
-from util.telegram import TelegramBot
 import csv
-import pickle
 from datetime import datetime
 from esm_custom import esm
 
@@ -31,6 +20,11 @@ class SequencesDataset(Dataset):
 
 
 def generate_representations(dir_path, sequences):
+    if not torch.cuda.is_available():
+        print("WARNING: A Cuda supporting GPU is not available. This will likely fail or take ages")
+    elif torch.cuda.get_device_properties(0).total_memeory < 1000*1000*1000*35:
+        print("WARNING: Cuda device at position 0 has less than 35GB of memory. This was only tested with Nvidia A40 with 40GB+ of memory")    
+        
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     esmfold = esm.pretrained.esmfold_v1().to(device)
 

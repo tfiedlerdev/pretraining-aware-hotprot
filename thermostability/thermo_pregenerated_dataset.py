@@ -7,6 +7,7 @@ import sys
 import csv
 from typing import List, Union
 from torch.nn.functional import pad
+from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
 def zero_padding(single_repr: torch.Tensor, len: int) -> torch.Tensor:
     dif = len - single_repr.size(0) 
@@ -32,13 +33,13 @@ def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]")
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 class ThermostabilityPregeneratedDataset(Dataset):
-    def __init__(self, dsFilePath: str = "data/train.csv", limit: int = 100000, usePerProteinRep = False) -> None:
+    def __init__(self, dsFilePath: str = "data/train.csv", limit: int = 100000, representation_key: RepresentationKey = "s_s_avg") -> None:
         super().__init__()
 
         if not os.path.exists(dsFilePath):
             raise Exception(f"{dsFilePath} does not exist.")
-
-        with open("data/s_s/sequences.csv", newline='\n') as csvfile:
+        self.representations_dir = f"data/{representation_key}"
+        with open(f"{self.representations_dir}/sequences.csv", newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
             self.sequenceToFilename = {sequence: filename for (i, (sequence, filename)) in enumerate(spamreader) if i!=0}
 
@@ -50,8 +51,8 @@ class ThermostabilityPregeneratedDataset(Dataset):
             self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
             print(f"Omitted {diff} sequences of {os.path.basename(dsFilePath)} because they have not been pregenerated")
-        self.representations_dir = "data/s_s"
-        self.usePerProteinRep = usePerProteinRep
+        
+      
 
     def __len__(self):
         return min(len(self.filename_thermo_seq), self.limit)
@@ -62,8 +63,6 @@ class ThermostabilityPregeneratedDataset(Dataset):
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f) 
             
-        if self.usePerProteinRep:
-            s_s = torch.mean(s_s, 0)
         return s_s, torch.tensor(float(thermo), dtype=torch.float32)
 
         
