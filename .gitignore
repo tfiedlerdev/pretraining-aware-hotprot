@@ -20,4 +20,8 @@ wandb
 *nbconvert.ipynb
 mlruns
 mlartifacts
+
+results/
 runs
+g++
+gcc
