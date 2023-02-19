@@ -1,6 +1,16 @@
 # HotProt
 
 This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. 
+With our pretrained model we have achieved a mean absolute difference (MAD) of 3.77°C between actual and predicted melting points over our validation set. 
+As there are multiple melting point measurements for many of the different proteins, a MAD of 0°C would not be possible. 
+In our validation set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.337`, which would consequently also be the MAD of a perfect model.
+These are the predictions of our pretrained model on the validation set
+
+![image](https://user-images.githubusercontent.com/29177177/219954806-affd41d0-305b-4081-8151-32e911050065.png)
+![image](https://user-images.githubusercontent.com/29177177/219954823-4dc1d414-830a-42ad-9d4e-7bce26ba10fd.png)
+
+
+
 ## Resouces
 - [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
 - [ESMFold paper](https://www.biorxiv.org/content/10.1101/2022.07.20.500902v2.full.pdf)
