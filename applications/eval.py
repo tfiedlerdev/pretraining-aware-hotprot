@@ -53,7 +53,7 @@ if __name__ == "__main__":
     model = torch.load(argsDict["model"]).to(device)
     dsPath = argsDict["dataset"]
     ds = ThermostabilityPregeneratedDataset(
-        dsPath, limit=limit, usePerProteinRep=True
+        dsPath, limit=limit, representation_key="s_s_avg"
     )
     dataloader = DataLoader(ds, argsDict["batch_size"], shuffle=False)
     with torch.no_grad():
