@@ -1,4 +1,6 @@
 # HotProt
+
+This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. 
 ## Resouces
 - [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
 - [ESMFold paper](https://www.biorxiv.org/content/10.1101/2022.07.20.500902v2.full.pdf)
@@ -10,7 +12,7 @@
 
 ## Setup
 These steps can be taken to setup the project on a linux machine.
-1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse --submodules`
+1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
 2. `conda env create -f environment.yml`
 3. `conda activate hotprot`
 4. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
@@ -29,15 +31,30 @@ pip install openfold@git+https://github.com/aqlaboratory/openfold.git@4b41059694
 export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
 ```
 
-### Dataset
+### Data
+We have prepared a ZIP archive containing 
+- all data required for generating our train and validation sets 
+- a pretrained model
+- ESM per protein representation for all sequences in our train/validation set with a length < 700
 
-1. Download [FLIP dataset](https://benchmark.protein.properties/landscapes) for protein thermostabilities
-2. Download the ids of the [evaluation proteins](https://dl.fbaipublicfiles.com/fair-esm/pretraining-data/uniref201803_ur50_valid_headers.txt.gz) excluded from training of ESM language model
-3. Run the `data_filtering.ipynb` to extract proteins from the FLIP dataset that haven't been used in training of ESM language model for our evaluation dataset to avoid data leakage and others for our training dataset
-4. The fasta files for our evaluation and training data are saved in the `FLIP` directory
-5. Download the averaged s_s0 representations TODO
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/1Og0z3jpjerZmHzdNXBohAt5JP9zFPM3r/view?usp=share_link) and unzip the contents to the working directory (`unzip data.zip -d .`)
+2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook
 
-## Train with hyperparamers with wandb
+## Applications
+For this all steps in **Setup** must have been executed successfuly.
+### Inference
+To run inference using our pretrained model, run [inference.ipynb](applications/inference.ipynb). You will be asked to input a protein sequence.
+### Evaluation
+To evaluate an existing model, you can use our [`eval` script](applications/eval.py).
+E.g. `python applications/eval.py -m data/pretrained/model.pt` 
+Note that the model file specified after `-m` must be a pytorch module that takes an input of size `(batch_size, 1024)` and provides an output of size `(batch_size, 1)`. 
+The results will be logged under `/results/eval`.
+### Train
+#### Single training run
+To train a model with a hyperparameter specification, you can use our [`train` script](applications/train.py).
+E.g. `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7`
+The results will be logged under `/results/train`.
+#### Hyperparameter search
 
 1. Edit the configuration in the `training/hyperparameter_esm.yaml` if you like to
 2. Then run `wandb sweep training/hyperparameter_esm.yaml`
