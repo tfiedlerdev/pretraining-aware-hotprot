@@ -95,17 +95,18 @@ def train_model(
                         print(
                             f"Nan loss: {torch.isnan(loss)}| Loss: {loss}"
                         )
-                tqdm.write(
-                    "Epoch: [{}/{}], Batch: [{}/{}], batch loss: {:.6f}, epoch abs diff mean {:.6f}".format(
-                        epoch,
-                        num_epochs,
-                        idx + 1,
-                        len(dataloaders[phase]),
-                        loss,
-                        running_mad,
-                    ),
-                    end="\r",
-                )
+                if idx %10 ==0:
+                    tqdm.write(
+                        "Epoch: [{}/{}], Batch: [{}/{}], batch loss: {:.6f}, epoch abs diff mean {:.6f}".format(
+                            epoch,
+                            num_epochs,
+                            idx + 1,
+                            len(dataloaders[phase]),
+                            loss,
+                            running_mad,
+                        ),
+                        end="\r",
+                    )
 
             if phase == "train":
                 model.train()  # Set model to training mode

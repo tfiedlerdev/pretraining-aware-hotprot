@@ -1,6 +1,6 @@
-program: train.py
+program: applications/train.py
 method: grid
-name: esm2_avg_representations
+name: esm2_repr_summarizer
 command:
   - ${env}
   - ${interpreter}
@@ -12,20 +12,28 @@ metric:
   goal: minimize
 parameters:
   learning_rate:
-    values: [0.001,0.005, 0.01, 0.05, 0.1, 0.5]
+    values: [0.001]
   model_hidden_layers:
-    values: [2,3,4]
+    values: [2]
   model_first_hidden_units:
-    values: [1024, 512]
+    values: [1024]
   epochs:
     values: [5]
   val_on_trainset:
     values: ["false"]
   optimizer: 
-    values: ["sgd", "adam"]
+    values: [ "adam"]
   model: 
-    values: ["fc"]
+    values: ["summarizer"]
   batch_size: 
-    values: [8,16]
+    values: [32]
   representation_key: 
-    values: ["s_s_0_avg"]
+    values: ["s_s"]
+  summarizer_type: 
+    values: ["single_instance", "700_instance"]
+  summarizer_per_residue_out_size:
+    values: [1, 10, 50]
+  summarizer_num_layers: 
+    values: [1,2,3]
+  model_dropoutrate:
+    values: [0,0.5]
