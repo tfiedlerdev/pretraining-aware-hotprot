@@ -25,7 +25,7 @@ def zero_padding_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fi
         padded = zero_padding(s_s, max_size)
         padded_s_s.append(padded)
         temps.append(temp)
-    results= torch.stack(padded_s_s, 0).unsqueeze(1), torch.stack(temps)
+    results= torch.stack(padded_s_s, 0), torch.stack(temps)
     return results
 
 def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):

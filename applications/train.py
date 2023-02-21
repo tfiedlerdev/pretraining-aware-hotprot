@@ -21,7 +21,7 @@ import argparse
 import os
 from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
-    RepresentationSummarizer700Instance,
+    RepresentationSummarizerMultiInstance,
 )
 
 cudnn.benchmark = True
@@ -93,13 +93,17 @@ def run_train_experiment(
         RepresentationSummarizerSingleInstance(
             per_residue_output_size=config["summarizer_per_residue_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
+            activation=nn.ReLU if config["summarizer_activation"] == "relu" else nn.Identity,
+            per_residue_summary=config["summarizer_mode"] == "per_residue"
         )
         if config["summarizer_type"] == "single_instance"
-        else RepresentationSummarizer700Instance(
+        else RepresentationSummarizerMultiInstance(
             per_residue_output_size=config["summarizer_per_residue_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
+            activation=nn.ReLU if config["summarizer_activation"] == "relu" else nn.Identity,
+            per_residue_summary=config["summarizer_mode"] == "per_residue"
         )
-        if config["summarizer_type"] == "700_instance"
+        if config["summarizer_type"] in  ["700_instance",  "multi_instance"]
         else None
     )
 
@@ -132,7 +136,7 @@ def run_train_experiment(
             p_dropout=config["model_dropoutrate"],
             summarizer=summarizer,
             thermo_module=HotInferPregeneratedFC(
-                input_len=700 * summarizer.per_residue_output_size,
+                input_len= summarizer.per_sample_output_size,
                 num_hidden_layers=config["model_hidden_layers"],
                 first_hidden_size=config["model_first_hidden_units"],
                 p_dropout=config["model_dropoutrate"],
@@ -236,10 +240,11 @@ if __name__ == "__main__":
     parser.add_argument("--seq_length", type=int, default=700)
     parser.add_argument("--nolog", action="store_true")
     parser.add_argument("--summarizer_per_residue_out_size", type=int, default=1)
+    parser.add_argument("--summarizer_activation",  default="identity", choices=["relu", "identity"])
     parser.add_argument(
         "--summarizer_type",
         default=None,
-        choices=[None, "single_instance", "700_instance"],
+        choices=[None, "single_instance", "700_instance", "multi_instance"],
     )
     parser.add_argument(
         "--dataset",
@@ -248,12 +253,17 @@ if __name__ == "__main__":
         default="pregenerated",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
+    parser.add_argument("--summarizer_mode", type=str, choices=["per_resiude", "per_repr_position"], default="per_residue")
     args = parser.parse_args()
 
     argsDict = vars(args)
+
+    # TODO: REMOVE
+    argsDict["epochs"] = 5
+    
     use_wandb = argsDict["wandb"]
     del argsDict["wandb"]
-    should_log = argsDict["nolog"]
+    should_log = not argsDict["nolog"]
     del argsDict["nolog"]
     representation_key = argsDict["representation_key"]
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")

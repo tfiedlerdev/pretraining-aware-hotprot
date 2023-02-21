@@ -1,6 +1,6 @@
 program: applications/train.py
 method: grid
-name: esm2_repr_summarizer
+name: esm2_repr_summarizer_fixed
 command:
   - ${env}
   - ${interpreter}
@@ -30,10 +30,14 @@ parameters:
   representation_key: 
     values: ["s_s"]
   summarizer_type: 
-    values: ["single_instance", "700_instance"]
+    values: ["single_instance", "multi_instance"]
   summarizer_per_residue_out_size:
-    values: [1, 10, 50]
+    values: [1, 8]
   summarizer_num_layers: 
     values: [1,2,3]
   model_dropoutrate:
-    values: [0,0.5]
+    values: [0]
+  summarizer_activation: 
+    values: ["relu", "identity"]
+  summarizer_mode:
+    values: ["per_repr_position", "per_resiude"]
