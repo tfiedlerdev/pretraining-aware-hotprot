@@ -6,7 +6,7 @@ As there are multiple melting point measurements for many of the different prote
 In our validation set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.337`, which would consequently also be the MAD of a perfect model.
 
 ## Results
-These are the predictions of our pretrained model on the validation set (reproducable via `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg`
+These are the predictions of our pretrained model on the validation set. Reproduce this via `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg` (the results might be slightly different due to different model initialization).
 
 ![image](https://user-images.githubusercontent.com/29177177/219954806-affd41d0-305b-4081-8151-32e911050065.png)
 ![image](https://user-images.githubusercontent.com/29177177/219954823-4dc1d414-830a-42ad-9d4e-7bce26ba10fd.png)
