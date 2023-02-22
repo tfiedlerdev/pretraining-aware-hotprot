@@ -59,7 +59,6 @@ class ThermostabilityPregeneratedDataset(Dataset):
     
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]
-        
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f) 
             
