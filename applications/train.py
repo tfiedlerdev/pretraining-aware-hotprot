@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
-import pandas as pd
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
