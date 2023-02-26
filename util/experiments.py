@@ -1,5 +1,6 @@
 import json
 from util.plotting import plot_predictions
+from util.train_helper import calculate_metrics
 import os
 from typing_extensions import Literal
 import matplotlib.pyplot as plt
@@ -33,5 +34,9 @@ def store_experiment(
         plt.title(f"MAD over epochs")
         plt.legend(epoch_mads.keys())    
         plt.savefig(os.path.join(output_dir_path, f"mads.png"))
+
+    metrics = calculate_metrics(epoch_predictions, epoch_actuals)
+    with open(os.path.join(output_dir_path, "metrics.json"), "w") as f:
+        json.dump(metrics, indent=5)
 
     print(f"Results stored in {output_dir_path}")

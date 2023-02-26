@@ -5,9 +5,17 @@ from tqdm.notebook import tqdm
 import sys
 import wandb
 from typing import Callable
-from scipy.stats import norm
+from scipy.stats import spearmanr
+import pandas as pd
 
-
+def calculate_metrics(predictions, labels):
+    diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
+    return {
+            "best_epoch_spearman_r_s_val": spearmanr(predictions, labels).correlation,
+            "best_epoch_max_abs_diff_val": diffs.max(),
+            "best_epoch_median_abs_diff_val": diffs.median(),
+            "best_epoch_mean_abs_diff_val": diffs.mean()
+            }
 
 def execute_epoch(
     model: nn.Module,
@@ -154,11 +162,8 @@ def train_model(
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
     print(f"Best val Acc: {best_epoch_loss:4f}")
 
-    if use_wandb:
-        wandb.log({'best_mad_val': best_val_mad})
-
     # load best model weights
     if best_model_path:
         model = torch.load(best_model_path)
     
-    return model, best_epoch_loss, best_val_mad ,epoch_mads,best_epoch_actuals, best_epoch_predictions
+    return model, best_epoch_loss, best_val_mad, epoch_mads, best_epoch_actuals, best_epoch_predictions
