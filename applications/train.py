@@ -23,6 +23,7 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
     RepresentationSummarizer700Instance,
 )
+from util.weighted_mse import Weighted_MSE_Loss
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -89,6 +90,14 @@ def run_train_experiment(
         ),
     }
 
+    train_mean, train_var = train_ds.norm_distr()
+    val_mean, val_var = eval_ds.norm_distr()
+
+    criterions = {
+        "train": Weighted_MSE_Loss(train_mean, train_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
+        "val": Weighted_MSE_Loss(val_mean, val_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
+    }
+
     summarizer = (
         RepresentationSummarizerSingleInstance(
             per_residue_output_size=config["summarizer_per_residue_out_size"],
@@ -150,7 +159,7 @@ def run_train_experiment(
 
     if use_wandb:
         wandb.watch(thermo)
-    criterion = nn.MSELoss()
+
     weight_decay = 1e-5 if config["weight_regularizer"] else 0
     optimizer_ft = (
         torch.optim.Adam(
@@ -176,7 +185,7 @@ def run_train_experiment(
         best_epoch_predictions,
     ) = train_model(
         model,
-        criterion,
+        criterions,
         exp_lr_scheduler,
         dataloaders,
         use_wandb,
@@ -248,6 +257,12 @@ if __name__ == "__main__":
         type=str,
         choices=["pregenerated", "end_to_end", "uni_prot"],
         default="pregenerated",
+    )
+    parser.add_argument(
+        "--loss",
+        type=str,
+        choices=["weighted_mse", "mse"],
+        default="mse",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
     args = parser.parse_args()

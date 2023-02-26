@@ -63,7 +63,7 @@ def execute_epoch(
 
 def train_model(
     model,
-    criterion: nn.modules.loss._Loss,
+    criterions,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     dataloaders,
     use_wandb,
@@ -124,7 +124,7 @@ def train_model(
             with torch.set_grad_enabled(phase == "train"):
                 epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = execute_epoch(
                     model,
-                    criterion,
+                    criterions[phase],
                     dataloaders[phase],
                     prepare_inputs,
                     prepare_labels,
@@ -147,10 +147,9 @@ def train_model(
 
             if phase == "val":
                 if use_wandb:
-                    wandb.log({"mse_loss": epoch_loss})
-                if epoch_mad < best_val_mad:
-                    best_val_mad = epoch_mad
+                    wandb.log({"loss": epoch_loss})
                 if epoch_loss < best_epoch_loss:
+                    best_val_mad = epoch_mad
                     best_epoch_loss = epoch_loss
                     if best_model_path:
                         torch.save(model, best_model_path)
@@ -162,6 +161,9 @@ def train_model(
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
     print(f"Best val Acc: {best_epoch_loss:4f}")
+
+    if use_wandb:
+        wandb.log({'best_mad_val': best_val_mad})
 
     # load best model weights
     if best_model_path:

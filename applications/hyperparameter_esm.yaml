@@ -8,7 +8,7 @@ command:
   - ${args}
   - --wandb
 metric:
-  name: mse_loss
+  name: loss
   goal: minimize
 parameters:
   learning_rate:
@@ -21,19 +21,19 @@ parameters:
     values: [10]
   val_on_trainset:
     values: ["false"]
-  optimizer: 
-    values: [ "adam"]
-  model: 
+  optimizer:
+    values: ["adam"]
+  model:
     values: ["summarizer"]
-  batch_size: 
+  batch_size:
     values: [32]
-  representation_key: 
+  representation_key:
     values: ["s_s"]
-  summarizer_type: 
+  summarizer_type:
     values: ["single_instance", "700_instance"]
   summarizer_per_residue_out_size:
     values: [1, 10, 50]
-  summarizer_num_layers: 
-    values: [1,2,3]
+  summarizer_num_layers:
+    values: [1, 2, 3]
   model_dropoutrate:
-    values: [0,0.5]
+    values: [0, 0.5]
