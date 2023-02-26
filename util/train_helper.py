@@ -5,8 +5,17 @@ from tqdm.notebook import tqdm
 import sys
 import wandb
 from typing import Callable
+from scipy.stats import spearmanr
+import pandas as pd
 
-
+def calculate_metrics(predictions, labels):
+    diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
+    return {
+            "spearman_r_s": spearmanr(predictions, labels),
+            "max_diff": diffs.max(),
+            "median_diff": diffs.median(),
+            "mean_diff": diffs.mean()
+            }
 
 def execute_epoch(
     model: nn.Module,

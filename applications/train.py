@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
-
+import pandas as pd
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
@@ -33,7 +33,7 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from util.train_helper import train_model
+from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
 from thermostability.uni_prot_dataset import UniProtDataset
@@ -199,6 +199,8 @@ def run_train_experiment(
         ]
         table = wandb.Table(data=data, columns=["predictions", "labels"])
         wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
+        metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals)
+        wandb.log(metrics)
     elif should_log:
         store_experiment(
             results_path,
