@@ -11,6 +11,7 @@ class RepresentationSummarizerSingleInstance(nn.Module):
         per_residue_output_size=1,
         per_residue_summary=True,
         activation=nn.ReLU,
+        p_dropout=0.
     ):
         super().__init__()
 
@@ -27,7 +28,7 @@ class RepresentationSummarizerSingleInstance(nn.Module):
             num_hidden_layers,
             1024 if per_residue_summary else 700,
             per_residue_output_size,
-            p_dropout=0,
+            p_dropout=p_dropout,
             activation=activation,
         )
 
@@ -53,7 +54,7 @@ class RepresentationSummarizerMultiInstance(nn.Module):
         num_hidden_layers=0,
         per_residue_output_size=1,
         per_residue_summary=True,
-        activation=nn.ReLU,
+        activation=nn.ReLU,p_dropout=0.
     ):
         super().__init__()
 
@@ -69,7 +70,7 @@ class RepresentationSummarizerMultiInstance(nn.Module):
                 num_hidden_layers,
                 1024 if per_residue_summary else 700,
                 per_residue_output_size,
-                p_dropout=0,
+                p_dropout=p_dropout,
                 activation=activation,
             ).to("cuda:0")
             for _ in range(700 if per_residue_summary else 1024)

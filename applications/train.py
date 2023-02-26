@@ -75,7 +75,7 @@ def run_train_experiment(
             shuffle=True,
             num_workers=4,
             collate_fn=zero_padding700_collate
-            if config["dataset"] == "pregenerated"
+            if representation_key == "s_s"
             else None,
         ),
         "val": DataLoader(
@@ -84,7 +84,7 @@ def run_train_experiment(
             shuffle=True,
             num_workers=4,
             collate_fn=zero_padding700_collate
-            if config["dataset"] == "pregenerated"
+            if representation_key == "s_s"
             else None,
         ),
     }
@@ -94,14 +94,16 @@ def run_train_experiment(
             per_residue_output_size=config["summarizer_per_residue_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
             activation=nn.ReLU if config["summarizer_activation"] == "relu" else nn.Identity,
-            per_residue_summary=config["summarizer_mode"] == "per_residue"
+            per_residue_summary=config["summarizer_mode"] == "per_residue",
+            p_dropout=config["model_dropoutrate"]
         )
         if config["summarizer_type"] == "single_instance"
         else RepresentationSummarizerMultiInstance(
             per_residue_output_size=config["summarizer_per_residue_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
             activation=nn.ReLU if config["summarizer_activation"] == "relu" else nn.Identity,
-            per_residue_summary=config["summarizer_mode"] == "per_residue"
+            per_residue_summary=config["summarizer_mode"] == "per_residue",
+            p_dropout=config["model_dropoutrate"]
         )
         if config["summarizer_type"] in  ["700_instance",  "multi_instance"]
         else None
@@ -253,7 +255,7 @@ if __name__ == "__main__":
         default="pregenerated",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
-    parser.add_argument("--summarizer_mode", type=str, choices=["per_resiude", "per_repr_position"], default="per_residue")
+    parser.add_argument("--summarizer_mode", type=str, choices=["per_residue", "per_repr_position"], default="per_residue")
     args = parser.parse_args()
 
     argsDict = vars(args)

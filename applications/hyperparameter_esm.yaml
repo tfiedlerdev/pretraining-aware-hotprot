@@ -1,6 +1,6 @@
 program: applications/train.py
 method: grid
-name: esm2_repr_summarizer_fixed
+name: esm2_repr_summarizer_dropout_per_residue
 command:
   - ${env}
   - ${interpreter}
@@ -18,7 +18,7 @@ parameters:
   model_first_hidden_units:
     values: [1024]
   epochs:
-    values: [10]
+    values: [5]
   val_on_trainset:
     values: ["false"]
   optimizer: 
@@ -30,14 +30,14 @@ parameters:
   representation_key: 
     values: ["s_s"]
   summarizer_type: 
-    values: ["single_instance", "multi_instance"]
+    values: ["single_instance"]
   summarizer_per_residue_out_size:
-    values: [1, 8]
+    values: [2,1]
   summarizer_num_layers: 
-    values: [1,2,3]
+    values: [3]
   model_dropoutrate:
-    values: [0]
+    values: [0.5]
   summarizer_activation: 
-    values: ["relu", "identity"]
+    values: ["relu"]
   summarizer_mode:
-    values: ["per_repr_position", "per_resiude"]
+    values: [ "per_residue"]
