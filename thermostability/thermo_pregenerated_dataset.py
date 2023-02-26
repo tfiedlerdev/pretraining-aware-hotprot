@@ -7,6 +7,7 @@ import sys
 import csv
 from typing import List, Union
 from torch.nn.functional import pad
+from thermostability.thermo_dataset import calc_norm
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
 def zero_padding(single_repr: torch.Tensor, len: int) -> torch.Tensor:
@@ -52,7 +53,9 @@ class ThermostabilityPregeneratedDataset(Dataset):
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
             print(f"Omitted {diff} sequences of {os.path.basename(dsFilePath)} because they have not been pregenerated")
         
-      
+    def norm_distr(self):
+        temps = [thermo for (filename, thermo, seq) in self.filename_thermo_seq]
+        return calc_norm(temps)
 
     def __len__(self):
         return min(len(self.filename_thermo_seq), self.limit)
