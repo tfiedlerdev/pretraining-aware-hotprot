@@ -76,7 +76,8 @@ if __name__ == "__main__":
         )
 
     print(
-        f"Evaluation done with \n- total average loss {epoch_loss:.2f}\n- total mean absolute difference {epoch_mad:.2f}"
+        f"""Evaluation done with \n- total average loss {epoch_loss:.2f}\n- total
+          mean absolute difference {epoch_mad:.2f}"""
     )
     output_dir_path = argsDict["output_dir"]
 

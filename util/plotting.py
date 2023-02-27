@@ -127,5 +127,6 @@ def plot_predictions(
     pl.ylabel("Frequency")
     plt.savefig(os.path.join(output_dir, "hist.png"))
     print(
-        f"Saved predictions as \n- scatter plot {plotPath}\n- seaborn scatter {seabornPath}\n- advanced scatter {advancedPath}"
+        f"""Saved predictions as \n- scatter plot {plotPath}\n- seaborn scatter
+          {seabornPath}\n- advanced scatter {advancedPath}"""
     )

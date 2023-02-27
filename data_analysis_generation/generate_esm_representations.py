@@ -27,7 +27,8 @@ def generate_representations(dir_path, sequences):
         )
     elif torch.cuda.get_device_properties(0).total_memeory < 1000 * 1000 * 1000 * 35:
         print(
-            "WARNING: Cuda device at position 0 has less than 35GB of memory. This was only tested with Nvidia A40 with 40GB+ of memory"
+            """WARNING: Cuda device at position 0 has less than 35GB of memory.
+             This was only tested with Nvidia A40 with 40GB+ of memory"""
         )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -68,7 +69,8 @@ def generate_representations(dir_path, sequences):
             hoursToGo = secsToGo / (60 * 60)
             now = datetime.now()
             print(
-                f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]"
+                f"""Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)})
+                 [last update: {now.hour}:{now.minute}]"""
             )
 
 

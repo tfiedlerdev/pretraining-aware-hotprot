@@ -13,7 +13,8 @@ class TelegramBot:
                     "[telegram]\nChatId = [TELEGRAM_CHAT_ID]\nBotKey = [TELEGRAM_BOT_KEY]"
                 )
             raise Exception(
-                f"For using the telegram bot, add the telegram chat id and bot key to the newly created {configFile} config file."
+                f"""For using the telegram bot, add the telegram chat
+                 id and bot key to the newly created {configFile} config file."""
             )
 
         self.config = configparser.ConfigParser()
