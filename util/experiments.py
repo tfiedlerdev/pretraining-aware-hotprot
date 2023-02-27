@@ -5,6 +5,7 @@ import os
 from typing_extensions import Literal
 import matplotlib.pyplot as plt
 
+
 def store_experiment(
     output_dir_path: str,
     epoch_loss: float,
@@ -26,13 +27,13 @@ def store_experiment(
 
     if epoch_mads:
         plt.clf()
-        
+
         for values in epoch_mads.values():
             plt.plot(range(len(values)), values)
         plt.xlabel("Epoch")
         plt.ylabel("MAD ")
         plt.title(f"MAD over epochs")
-        plt.legend(epoch_mads.keys())    
+        plt.legend(epoch_mads.keys())
         plt.savefig(os.path.join(output_dir_path, f"mads.png"))
 
     metrics = calculate_metrics(epoch_predictions, epoch_actuals)
