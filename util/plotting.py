@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from torch import nn as nn
 import pylab as pl
 import seaborn as sns
 import os
@@ -53,7 +52,7 @@ def plot_advanced_scatter(predictions, actuals, outPath):
         * (1 + 1 / n + (x_line - x_mean) ** 2 / np.sum((x - x_mean) ** 2)) ** 0.5
     )
 
-    ############### Ploting
+    # ------------------------ Ploting
     plt.rcParams.update({"font.size": 14})
     fig = plt.figure()
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])

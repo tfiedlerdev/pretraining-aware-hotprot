@@ -1,4 +1,3 @@
-import math
 import requests
 from urllib.parse import quote
 import configparser
@@ -55,7 +54,7 @@ class TelegramBot:
         try:
             response = (requests.get(url)).json()
             return response
-        except:
+        except Exception:
             return False
 
     def _fetch_edit_message(self, messageId: int, editedText: str):
@@ -74,7 +73,7 @@ class TelegramBot:
             response = (requests.get(url)).json()
 
             return response
-        except Exception as e:
+        except Exception:
             print("Exception while decodin response from editing telegram message")
             return False
 
@@ -86,7 +85,7 @@ class TelegramBot:
             + self.chatId
         )
 
-        if caption != None:
+        if caption is not None:
             url += "&caption=" + quote(caption)
 
         try:
@@ -94,5 +93,5 @@ class TelegramBot:
                 requests.post(url, files=dict(photo=open(filePath, "rb")))
             ).json()
             return response["ok"]
-        except:
+        except Exception:
             return False

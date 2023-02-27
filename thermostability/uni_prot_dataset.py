@@ -4,7 +4,6 @@ import os
 import pickle
 import csv
 import h5py
-import numpy as np
 from thermostability.thermo_dataset import calc_norm
 
 

@@ -1,11 +1,8 @@
 from torch.utils.data import Dataset
-import pandas as pd
 import torch
 import os
-import pickle
-import sys
 import csv
-from typing import List, Union
+from typing import Union
 from torch.nn.functional import pad
 from thermostability.thermo_dataset import calc_norm
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey

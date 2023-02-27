@@ -37,8 +37,7 @@ class CNNPregenerated(nn.Module):
         )
 
     def forward(self, s_s: torch.Tensor):
-        filtered_s_s = self.thermo_cnn(s_s)
-        output, (hidden, final) = self.thermo_module_rnn(s_s)
+        _, (hidden, _) = self.thermo_module_rnn(s_s)
         thermostability = self.thermo_module_regression(torch.transpose(hidden, 0, 1))
         return thermostability
 
@@ -76,7 +75,6 @@ class CNNPregeneratedFC(nn.Module):
             ),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
         )
-        representation_height = 1024
         inter_height = 41
         inter_width = 62
 

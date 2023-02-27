@@ -16,7 +16,7 @@ def store_experiment(
     epoch_mads: "dict[Literal['train', 'val'], list[float]]" = None,
 ):
     plot_predictions(
-        f"predictions",
+        "predictions",
         f"Loss: {epoch_loss: .2f}, mad {epoch_mad: .2f}",
         epoch_predictions,
         epoch_actuals,
@@ -32,9 +32,9 @@ def store_experiment(
             plt.plot(range(len(values)), values)
         plt.xlabel("Epoch")
         plt.ylabel("MAD ")
-        plt.title(f"MAD over epochs")
+        plt.title("MAD over epochs")
         plt.legend(epoch_mads.keys())
-        plt.savefig(os.path.join(output_dir_path, f"mads.png"))
+        plt.savefig(os.path.join(output_dir_path, "mads.png"))
 
     metrics = calculate_metrics(epoch_predictions, epoch_actuals)
     with open(os.path.join(output_dir_path, "metrics.json"), "w") as f:

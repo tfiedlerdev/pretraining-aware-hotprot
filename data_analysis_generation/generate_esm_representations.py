@@ -39,7 +39,7 @@ def generate_representations(dir_path, sequences):
     labels_file = os.path.join(dir_path, "sequences.csv")
     if not os.path.exists(labels_file):
         with open(labels_file, "w") as csv:
-            csv.write(f"sequence, filename\n")
+            csv.write("sequence, filename\n")
 
     maxFilePrefix = len(os.listdir(dir_path))
     print(f"Starting with maxFilePrefix {maxFilePrefix}")
@@ -50,7 +50,7 @@ def generate_representations(dir_path, sequences):
         numBatches = int(len(sequences) / batch_size)
         print(f"At batch {index}/{numBatches}")
         with torch.no_grad():
-            print(f"Predicting")
+            print("Predicting")
             esm_output = esmfold.infer(sequences=inputs)
             s_s = esm_output["s_s"]
             batchesPredicted += 1

@@ -1,3 +1,6 @@
+from tqdm.notebook import tqdm
+from util.train_helper import execute_epoch
+from datetime import datetime as dt
 import torch
 from torch.utils.data import DataLoader
 from torch import nn as nn
@@ -17,9 +20,6 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from tqdm.notebook import tqdm
-from util.train_helper import execute_epoch
-from datetime import datetime as dt
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
