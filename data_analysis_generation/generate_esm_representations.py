@@ -6,6 +6,10 @@ import os
 import csv
 from datetime import datetime
 from esm_custom import esm
+from typing import Optional
+from util.telegram import TelegramBot
+
+
 
 class SequencesDataset(Dataset):
     def __init__(self, sequences: "set[str]") -> None:
@@ -19,24 +23,32 @@ class SequencesDataset(Dataset):
         return self.sequences[index]
 
 
-def generate_representations(dir_path, sequences):
+def generate_representations(dir_path, sequences, store_only_mean: bool, batch_size: int, telegram_bot: Optional[TelegramBot] ):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
     if not torch.cuda.is_available():
         print("WARNING: A Cuda supporting GPU is not available. This will likely fail or take ages")
-    elif torch.cuda.get_device_properties(0).total_memeory < 1000*1000*1000*35:
+    elif torch.cuda.get_device_properties(device).total_memory < 1000*1000*1000*35:
         print("WARNING: Cuda device at position 0 has less than 35GB of memory. This was only tested with Nvidia A40 with 40GB+ of memory")    
-        
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    if telegram_bot:
+        telegram_bot.send_telegram(f"Generating remaining s_s representations for {len(sequences)} sequences")
+        response = telegram_bot.send_telegram(f"Generating first batch...")
+    messageId = response["result"]["message_id"]
+
+    os.makedirs(dir_path, exist_ok=True)
     esmfold = esm.pretrained.esmfold_v1().to(device)
 
     ds = SequencesDataset(sequences)
-    loader = torch.utils.data.DataLoader(ds, batch_size=2, shuffle=False, num_workers=0)
+    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=4)
     timeStart = time.time()
     labels_file = os.path.join(dir_path, "sequences.csv")
     if not os.path.exists(labels_file):
         with open(labels_file,"w") as csv:
             csv.write(f"sequence, filename\n") 
 
-    maxFilePrefix = len(os.listdir(dir_path))
+    file_prefixes = [int(fname.split(".")[0]) for fname in os.listdir(dir_path) if fname != "sequences.csv"]
+    maxFilePrefix = max(file_prefixes) if len(file_prefixes) > 0 else 0
     print(f"Starting with maxFilePrefix {maxFilePrefix}")
     batchesPredicted = 0
 
@@ -52,40 +64,63 @@ def generate_representations(dir_path, sequences):
             with open(labels_file,"a") as csv:
                 for s, data in enumerate(s_s):
                     maxFilePrefix+=1
-                    file = str(maxFilePrefix)+".pt"
-                    if not os.path.exists(file):
-                        with open(os.path.join("data/s_s", file), "wb") as f:
-                            torch.save(data.mean(0).cpu(),f)
-                        csv.write(f"{inputs[s]}, {file}\n") 
+                    file_name = str(maxFilePrefix)+".pt"
+                    file_path = os.path.join(dir_path, file_name)
+                    if not os.path.exists(file_path):
+                        if store_only_mean:
+                            data=data.mean(0)
+                        with open(file_path, "wb") as f:
+                            torch.save(data.cpu(),f)
+                        csv.write(f"{inputs[s]}, {file_name}\n") 
         if index %5 == 0:
             secsSpent = time.time()- timeStart  
             secsToGo = (secsSpent/(batchesPredicted+1))*(numBatches-index-1)
             hoursToGo = secsToGo/(60*60)
             now = datetime.now()
+            if telegram_bot:
+                telegram_bot.edit_text_message(messageId, f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]")
+        
+
             print(f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]")
 
 def get_already_created_sequences(dir_path):
     labels_file = os.path.join(dir_path, "sequences.csv")
-    if not os.path.exists(labels_file):
+    if os.path.exists(labels_file):
         with open(labels_file,"r") as f:
             return [seq for i,(seq, _) in enumerate(csv.reader(f,delimiter=",", skipinitialspace=True)) if i!=0]
     return []
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", type=str, nargs=1, help="File containing amino ascid sequences split by new line for which to generate representations")
-    parser.add_argument("output_dir", type=str, nargs=1, help="Directory in which to place the representations")
+    parser.add_argument("input_file", type=str,  help="File containing amino ascid sequences split by new line for which to generate representations")
+    parser.add_argument("output_dir", type=str, help="Directory in which to place the representations")
+    parser.add_argument("--store_only_mean", action="store_true", default=False)
     parser.add_argument("--batch_size", type=int,default=2)
+    parser.add_argument("--telegram", action="store_true", default=False)
 
     args = vars(parser.parse_args())
+
+    telegram_bot = TelegramBot() if args["telegram"] else None
+        
     with open(args["input_file"],"r") as f:
-        seqs = f.readlines()
+        seqs = [line.replace("\n","") for line in f.readlines()]
 
     print(f"Representations of {len(seqs)} sequences to be created")
     already_created_seqs = get_already_created_sequences(args["output_dir"])
     print(f"Representations of {len(already_created_seqs)} sequences of those already created")
-    remaining_seqs = set(seqs).difference_update(already_created_seqs)
+    remaining_seqs = set(seqs).difference(already_created_seqs)
+   
     print(f"Creating remaining representations of {len(remaining_seqs)} sequences")
-    generate_representations(remaining_seqs)
+    
+    try:
+        generate_representations(args["output_dir"],remaining_seqs, args["store_only_mean"], batch_size=args["batch_size"], telegram_bot = telegram_bot)
+        if telegram_bot:
+            telegram_bot.send_telegram("Done!")
+    except Exception as e:
+        print("Exception raised: ", e)
+        if telegram_bot:
+            telegram_bot.send_telegram("Generation of representations failed with error message: "+str(e))
+    
+    
 
 
