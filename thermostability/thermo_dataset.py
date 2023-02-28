@@ -13,16 +13,16 @@ def calc_norm(temps: "list[float]"):
     return temps_np.mean(), temps_np.var()
 
 class ThermostabilityDataset(Dataset):
-    def __init__(self, dataset_filename: str = "train.csv", limit: int = 100000, max_seq_len: int=700) -> None:
+    def __init__(self, dataset_filepath: str = "data/train.csv", limit: int = 100000, max_seq_len: int=700) -> None:
         super().__init__()
 
-        dsFilePath = os.path.join("data/", dataset_filename)
-        if not os.path.exists(dsFilePath):
-            raise Exception(f"{dsFilePath} does not exist.")
+        
+        if not os.path.exists(dataset_filepath):
+            raise Exception(f"{dataset_filepath} does not exist.")
 
 
         self.limit=limit
-        with open(dsFilePath, newline='\n') as csvfile:
+        with open(dataset_filepath, newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
             self.seq_thermos = [(seq,thermo) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0 and len(seq)<=max_seq_len]
 

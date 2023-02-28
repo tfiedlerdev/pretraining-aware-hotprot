@@ -35,7 +35,7 @@ if __name__ == "__main__":
         "--dataset",
         "-d",
         type=str,
-        default="data/val.csv",
+        default="data/test.csv",
         help="Path to dataset csv with format: sequence, melting point",
     )
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")

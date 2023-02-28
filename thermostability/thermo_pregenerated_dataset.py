@@ -47,7 +47,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
         self.limit=limit
         with open(dsFilePath, newline='\n') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
-            seq_thermos = [(seq,thermo) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0]
+            seq_thermos = [(seq,float(thermo)) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0]
         
             self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
@@ -65,6 +65,6 @@ class ThermostabilityPregeneratedDataset(Dataset):
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f) 
             
-        return s_s, torch.tensor(float(thermo), dtype=torch.float32)
+        return s_s, torch.tensor(thermo, dtype=torch.float32)
 
         
