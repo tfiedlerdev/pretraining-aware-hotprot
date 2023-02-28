@@ -31,7 +31,6 @@ def execute_epoch(
     ] = lambda idx, outputs, loss, running_mad: None,
     optimizer: torch.optim.Optimizer = None,
 ):
-
     epoch_predictions = torch.tensor([])
     epoch_actuals = torch.tensor([])
     running_loss = 0.0
@@ -48,7 +47,6 @@ def execute_epoch(
         epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
         # statistics
-        batch_size = len(inputs)
         batch_loss = loss.item()
 
         running_loss += batch_loss
@@ -119,7 +117,7 @@ def train_model(
                         if max_gradient_clip:
                             threshold = max_gradient_clip
                             for p in model.parameters():
-                                if p.grad != None:
+                                if p.grad is not None:
                                     if p.grad.norm() > threshold:
                                         torch.nn.utils.clip_grad_norm_(p, threshold)
                         optimizer.step()

@@ -1,27 +1,30 @@
 from torch.utils.data import Dataset
-import pandas as pd
 import torch
 import os
-import pickle
-import sys
 import csv
-from typing import List, Union
+from typing import Union
 from torch.nn.functional import pad
 from thermostability.thermo_dataset import calc_norm
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
+
 def zero_padding(single_repr: torch.Tensor, len: int) -> torch.Tensor:
-    dif = len - single_repr.size(0) 
-    return pad(single_repr, (0,0,dif,0), "constant", 0)
+    dif = len - single_repr.size(0)
+    return pad(single_repr, (0, 0, dif, 0), "constant", 0)
+
 
 def zero_padding_700(single_repr: torch.Tensor) -> torch.Tensor:
-    return zero_padding(single_repr, 700) 
+    return zero_padding(single_repr, 700)
 
-def zero_padding_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fixed_size: Union[int, None]=None):
+
+def zero_padding_collate(
+    s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]",
+    fixed_size: Union[int, None] = None,
+):
     max_size = fixed_size if fixed_size else max([s_s.size(0) for s_s, _ in s_s_list])
 
     padded_s_s = []
-    temps =[]
+    temps = []
     for s_s, temp in s_s_list:
         padded = zero_padding(s_s, max_size)
         padded_s_s.append(padded)
@@ -29,10 +32,14 @@ def zero_padding_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]", fi
     results= torch.stack(padded_s_s, 0), torch.stack(temps)
     return results
 
+
 def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     return zero_padding_collate(s_s_list, 700)
 
+
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
+
+
 class ThermostabilityPregeneratedDataset(Dataset):
     def __init__(self, dsFilePath: str = "data/train.csv", limit: int = 1000000, representation_key: RepresentationKey = "s_s_avg") -> None:
         super().__init__()
@@ -59,12 +66,10 @@ class ThermostabilityPregeneratedDataset(Dataset):
 
     def __len__(self):
         return min(len(self.filename_thermo_seq), self.limit)
-    
+
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f) 
             
         return s_s, torch.tensor(thermo, dtype=torch.float32)
-
-        

@@ -24,6 +24,10 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerAverage,
 )
 from util.weighted_mse import Weighted_MSE_Loss
+from util.train_helper import train_model, calculate_metrics
+from datetime import datetime as dt
+from util.experiments import store_experiment
+from thermostability.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -34,10 +38,6 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from util.train_helper import train_model, calculate_metrics
-from datetime import datetime as dt
-from util.experiments import store_experiment
-from thermostability.uni_prot_dataset import UniProtDataset
 
 
 def run_train_experiment(

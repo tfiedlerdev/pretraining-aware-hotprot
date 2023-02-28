@@ -6,6 +6,7 @@ from typing import Optional
 from typing_extensions import Literal
 import matplotlib.pyplot as plt
 
+
 def store_experiment(
     output_dir_path: str,
     key: str,
@@ -29,7 +30,7 @@ def store_experiment(
 
     if epoch_mads:
         plt.clf()
-        
+
         for values in epoch_mads.values():
             plt.plot(range(len(values)), values)
         plt.xlabel("Epoch")
