@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
-
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
@@ -23,6 +22,7 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
     RepresentationSummarizerMultiInstance,
 )
+from util.weighted_mse import Weighted_MSE_Loss
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,7 +33,7 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from util.train_helper import train_model
+from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
 from thermostability.uni_prot_dataset import UniProtDataset
@@ -87,6 +87,14 @@ def run_train_experiment(
             if representation_key == "s_s"
             else None,
         ),
+    }
+
+    train_mean, train_var = train_ds.norm_distr()
+    val_mean, val_var = eval_ds.norm_distr()
+
+    criterions = {
+        "train": Weighted_MSE_Loss(train_mean, train_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
+        "val": Weighted_MSE_Loss(val_mean, val_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
     }
 
     summarizer = (
@@ -156,7 +164,7 @@ def run_train_experiment(
 
     if use_wandb:
         wandb.watch(thermo)
-    criterion = nn.MSELoss()
+
     weight_decay = 1e-5 if config["weight_regularizer"] else 0
     optimizer_ft = (
         torch.optim.Adam(
@@ -182,7 +190,7 @@ def run_train_experiment(
         best_epoch_predictions,
     ) = train_model(
         model,
-        criterion,
+        criterions,
         exp_lr_scheduler,
         dataloaders,
         use_wandb,
@@ -205,6 +213,8 @@ def run_train_experiment(
         ]
         table = wandb.Table(data=data, columns=["predictions", "labels"])
         wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
+        metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals)
+        wandb.log(metrics)
     elif should_log:
         store_experiment(
             results_path,
@@ -253,6 +263,12 @@ if __name__ == "__main__":
         type=str,
         choices=["pregenerated", "end_to_end", "uni_prot"],
         default="pregenerated",
+    )
+    parser.add_argument(
+        "--loss",
+        type=str,
+        choices=["weighted_mse", "mse"],
+        default="mse",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
     parser.add_argument("--summarizer_mode", type=str, choices=["per_residue", "per_repr_position"], default="per_residue")

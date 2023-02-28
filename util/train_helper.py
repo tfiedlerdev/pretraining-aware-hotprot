@@ -5,8 +5,17 @@ from tqdm.notebook import tqdm
 import sys
 import wandb
 from typing import Callable
+from scipy.stats import spearmanr
+import pandas as pd
 
-
+def calculate_metrics(predictions, labels):
+    diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
+    return {
+            "best_epoch_spearman_r_s_val": spearmanr(predictions, labels).correlation,
+            "best_epoch_max_abs_diff_val": diffs.max(),
+            "best_epoch_median_abs_diff_val": diffs.median(),
+            "best_epoch_mean_abs_diff_val": diffs.mean()
+            }
 
 def execute_epoch(
     model: nn.Module,
@@ -54,7 +63,7 @@ def execute_epoch(
 
 def train_model(
     model,
-    criterion: nn.modules.loss._Loss,
+    criterions,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     dataloaders,
     use_wandb,
@@ -115,7 +124,7 @@ def train_model(
             with torch.set_grad_enabled(phase == "train"):
                 epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = execute_epoch(
                     model,
-                    criterion,
+                    criterions[phase],
                     dataloaders[phase],
                     prepare_inputs,
                     prepare_labels,
@@ -138,10 +147,9 @@ def train_model(
 
             if phase == "val":
                 if use_wandb:
-                    wandb.log({"mse_loss": epoch_loss})
-                if epoch_mad < best_val_mad:
-                    best_val_mad = epoch_mad
+                    wandb.log({"loss": epoch_loss})
                 if epoch_loss < best_epoch_loss:
+                    best_val_mad = epoch_mad
                     best_epoch_loss = epoch_loss
                     if best_model_path:
                         torch.save(model, best_model_path)
@@ -158,4 +166,4 @@ def train_model(
     if best_model_path:
         model = torch.load(best_model_path)
     
-    return model, best_epoch_loss, best_val_mad ,epoch_mads,best_epoch_actuals, best_epoch_predictions
+    return model, best_epoch_loss, best_val_mad, epoch_mads, best_epoch_actuals, best_epoch_predictions

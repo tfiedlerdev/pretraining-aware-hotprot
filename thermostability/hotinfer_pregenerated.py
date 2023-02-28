@@ -17,7 +17,6 @@ def create_fc_layers(
 
     result = []
     for i in range(num - 1):
-
         _output_size = int(input_size / 2)
         layer = nn.Linear(input_size, _output_size)
         result.append((str(i * 3), layer))
@@ -25,8 +24,8 @@ def create_fc_layers(
         result.append((str(i * 3 + 2), nn.Dropout(p=p_dropout)))
         input_size = _output_size
 
-    result.append((str((num - 1) * 2), nn.Linear(input_size, output_size)))
-    result.append((str((num - 1) * 2 + 1), activation()))
+    result.append((str((num - 1) * 3), nn.Linear(input_size, output_size)))
+    result.append((str((num - 1) * 3 + 1), activation()))
     return nn.Sequential(OrderedDict(result))
 
 
