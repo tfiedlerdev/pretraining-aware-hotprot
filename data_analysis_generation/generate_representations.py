@@ -77,7 +77,7 @@ def generate_representations(
                     file_name = str(maxFilePrefix) + ".pt"
                     file_path = os.path.join(dir_path, file_name)
                     if not os.path.exists(file_path):
-                        if store_only_mean and model == "esm":
+                        if store_only_mean:
                             data = data.mean(0)
                         with open(file_path, "wb") as f:
                             torch.save(data.cpu(), f)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--store_only_mean", action="store_true", default=False)
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--model", type=str, default="esm")
+    parser.add_argument("--model", type=str, default="esm", choices=["esm", "protT5"])
     parser.add_argument("--telegram", action="store_true", default=False)
 
     args = vars(parser.parse_args())

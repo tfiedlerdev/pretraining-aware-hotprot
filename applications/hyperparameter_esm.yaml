@@ -31,7 +31,7 @@ parameters:
   representation_key:
     values: ["s_s"]
   summarizer_type: 
-    values: ["single_instance"]
+    values: ["single_instance", "multi_instance", "average"]
   summarizer_out_size:
     values: [1]
   summarizer_num_layers: 
@@ -41,4 +41,4 @@ parameters:
   summarizer_activation: 
     values: ["relu"]
   summarizer_mode:
-    values: [ "per_residue"]
+    values: [ "per_residue", "per_repr_position"]

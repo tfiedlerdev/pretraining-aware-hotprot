@@ -244,7 +244,7 @@ def run_train_experiment(
     best_epoch_predictions = train_result["best_epoch_predictions"]
     best_epoch_actuals = train_result["best_epoch_actuals"]
     best_epoch_loss = train_result["best_epoch_loss"]
-    best_epoch_mad = train_result["best_epoch_mad"]
+    best_epoch_mad = train_result["best_val_mad"]
     epoch_mads = train_result["epoch_mads"]
     test_predictions = train_result["test_predictions"]
     test_actuals = train_result["test_actuals"]
