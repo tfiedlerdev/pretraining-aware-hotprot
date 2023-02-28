@@ -1,12 +1,13 @@
 program: applications/train.py
 method: grid
-name: esm2_repr_summarizer_dropout_per_residue
+name: esm2_repr_summarizer_fix_overfit
 command:
   - ${env}
   - ${interpreter}
   - ${program}
   - ${args}
   - --wandb
+  - --early_stopping
 metric:
   name: loss
   goal: minimize
@@ -31,10 +32,10 @@ parameters:
     values: ["s_s"]
   summarizer_type: 
     values: ["single_instance"]
-  summarizer_per_residue_out_size:
-    values: [2,1]
+  summarizer_out_size:
+    values: [1]
   summarizer_num_layers: 
-    values: [3]
+    values: [1]
   model_dropoutrate:
     values: [0.5]
   summarizer_activation: 

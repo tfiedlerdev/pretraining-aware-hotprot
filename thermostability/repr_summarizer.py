@@ -4,6 +4,20 @@ from collections import OrderedDict
 from thermostability.hotinfer_pregenerated import create_fc_layers
 
 
+class RepresentationSummarizerAverage(nn.Module):
+    def __init__(
+        self,
+        per_residue_summary=False,
+    ):
+        super().__init__()
+        self.per_residue_summary = per_residue_summary
+        self.per_sample_output_size = 700 if per_residue_summary else 1024
+
+    def forward(self, s_s: torch.Tensor):
+        # [-1, sequence_len, 1024]
+        return s_s.mean(2 if self.per_residue_summary else 1)
+
+
 class RepresentationSummarizerSingleInstance(nn.Module):
     def __init__(
         self,
@@ -11,7 +25,7 @@ class RepresentationSummarizerSingleInstance(nn.Module):
         per_residue_output_size=1,
         per_residue_summary=True,
         activation=nn.ReLU,
-        p_dropout=0.
+        p_dropout=0.0,
     ):
         super().__init__()
 
@@ -36,9 +50,7 @@ class RepresentationSummarizerSingleInstance(nn.Module):
         # [-1, sequence_len, 1024]
         # [sequence_len, -1, 1024]
         to_summarize = (
-            s_s.transpose(0,1)
-            if self.per_residue_summary
-            else s_s.permute(2,0,1)
+            s_s.transpose(0, 1) if self.per_residue_summary else s_s.permute(2, 0, 1)
         )
         summaries = []
         for i, summarizable_batch in enumerate(to_summarize):
@@ -54,7 +66,8 @@ class RepresentationSummarizerMultiInstance(nn.Module):
         num_hidden_layers=0,
         per_residue_output_size=1,
         per_residue_summary=True,
-        activation=nn.ReLU,p_dropout=0.
+        activation=nn.ReLU,
+        p_dropout=0.0,
     ):
         super().__init__()
 
@@ -79,11 +92,9 @@ class RepresentationSummarizerMultiInstance(nn.Module):
     def forward(self, s_s: torch.Tensor):
         # [-1, sequence_len, 1024]
         # [sequence_len, -1, 1024]
-        
+
         to_summarize = (
-            s_s.transpose(0,1)
-            if self.per_residue_summary
-            else s_s.permute(2,0,1)
+            s_s.transpose(0, 1) if self.per_residue_summary else s_s.permute(2, 0, 1)
         )
         summaries = []
         for i, summarizable_batch in enumerate(to_summarize):

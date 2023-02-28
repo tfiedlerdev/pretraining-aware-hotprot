@@ -21,6 +21,7 @@ import os
 from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
     RepresentationSummarizerMultiInstance,
+    RepresentationSummarizerAverage,
 )
 from util.weighted_mse import Weighted_MSE_Loss
 
@@ -121,7 +122,7 @@ def run_train_experiment(
 
     summarizer = (
         RepresentationSummarizerSingleInstance(
-            per_residue_output_size=config["summarizer_per_residue_out_size"],
+            per_residue_output_size=config["summarizer_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
             activation=nn.ReLU
             if config["summarizer_activation"] == "relu"
@@ -131,7 +132,7 @@ def run_train_experiment(
         )
         if config["summarizer_type"] == "single_instance"
         else RepresentationSummarizerMultiInstance(
-            per_residue_output_size=config["summarizer_per_residue_out_size"],
+            per_residue_output_size=config["summarizer_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
             activation=nn.ReLU
             if config["summarizer_activation"] == "relu"
@@ -140,6 +141,10 @@ def run_train_experiment(
             p_dropout=config["model_dropoutrate"],
         )
         if config["summarizer_type"] in ["700_instance", "multi_instance"]
+        else RepresentationSummarizerAverage(
+            per_residue_summary=config["summarizer_mode"] == "per_residue"
+        )
+        if config["summarizer_type"] == "average"
         else None
     )
 
@@ -211,10 +216,13 @@ def run_train_experiment(
     def should_stop(val_epoch_losses: "list[float]"):
         if not config["early_stopping"]:
             return False
-        if len(val_epoch_losses)<3:
+        if len(val_epoch_losses) < 3:
             return False
 
-        has_improved = val_epoch_losses[-2] < val_epoch_losses[-3] or val_epoch_losses[-1] < val_epoch_losses[-3]
+        has_improved = (
+            val_epoch_losses[-2] < val_epoch_losses[-3]
+            or val_epoch_losses[-1] < val_epoch_losses[-3]
+        )
         return not has_improved
 
     train_result = train_model(
@@ -231,7 +239,7 @@ def run_train_experiment(
         best_model_path=os.path.join(results_path, "model.pt")
         if not use_wandb and should_log
         else None,
-        should_stop=should_stop
+        should_stop=should_stop,
     )
     best_epoch_predictions = train_result["best_epoch_predictions"]
     best_epoch_actuals = train_result["best_epoch_actuals"]
@@ -310,14 +318,14 @@ if __name__ == "__main__":
     parser.add_argument("--seq_length", type=int, default=700)
     parser.add_argument("--nolog", action="store_true")
     parser.add_argument("--early_stopping", action="store_true", default=False)
-    parser.add_argument("--summarizer_per_residue_out_size", type=int, default=1)
+    parser.add_argument("--summarizer_out_size", type=int, default=1)
     parser.add_argument(
         "--summarizer_activation", default="identity", choices=["relu", "identity"]
     )
     parser.add_argument(
         "--summarizer_type",
         default=None,
-        choices=[None, "single_instance", "700_instance", "multi_instance"],
+        choices=[None, "single_instance", "700_instance", "multi_instance", "average"],
     )
     parser.add_argument(
         "--dataset",
@@ -341,9 +349,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     argsDict = vars(args)
-
-    # TODO: REMOVE
-    argsDict["epochs"] = 5
 
     use_wandb = argsDict["wandb"]
     del argsDict["wandb"]
