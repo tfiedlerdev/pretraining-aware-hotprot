@@ -4,7 +4,6 @@ import os
 import pickle
 import csv
 import h5py
-import numpy as np
 from thermostability.thermo_dataset import calc_norm
 
 
@@ -13,18 +12,22 @@ from thermostability.thermo_dataset import calc_norm
 
 class UniProtDataset(Dataset):
     def __init__(
-        self, dataset_filename: str = "train.csv", limit: int = 10000000, seq_length= 100000
+        self,
+        dataset_filename: str = "train.csv",
+        limit: int = 10000000,
+        seq_length=100000,
     ) -> None:
         super().__init__()
         self.cacheFile = f"data/uni_prot/cache_{dataset_filename.split('/')[1].split('.')[0]}_{seq_length}"
         self.limit = limit
-        
-        if not os.path.exists(self.cacheFile):
 
+        if not os.path.exists(self.cacheFile):
             with open(f"{dataset_filename}", "r") as csv_file:
                 csv_seqs = csv.reader(csv_file, delimiter=",", skipinitialspace=True)
                 self.seqs = [
-                    seq for (i, (seq, thermo)) in enumerate(csv_seqs) if i != 0 and len(seq) <= seq_length
+                    seq
+                    for (i, (seq, thermo)) in enumerate(csv_seqs)
+                    if i != 0 and len(seq) <= seq_length
                 ]
                 print(f"Seqs in {dataset_filename}: {len(self.seqs)} ")
                 self.seqs = set(self.seqs)
@@ -64,8 +67,9 @@ class UniProtDataset(Dataset):
                     temps = full_temps[id]
                     repr = torch.from_numpy(item[1][()])
                     for temp in temps:
-                        entry = ( repr.float(),
-                           torch.tensor(float(temp), dtype=torch.float32)
+                        entry = (
+                            repr.float(),
+                            torch.tensor(float(temp), dtype=torch.float32),
                         )
                         self.dataset.append(entry)
                 except KeyError:

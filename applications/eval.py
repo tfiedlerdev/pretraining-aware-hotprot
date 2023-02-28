@@ -1,3 +1,6 @@
+from tqdm.notebook import tqdm
+from util.train_helper import execute_epoch
+from datetime import datetime as dt
 import torch
 from torch.utils.data import DataLoader
 from torch import nn as nn
@@ -7,6 +10,7 @@ from thermostability.thermo_pregenerated_dataset import (
 )
 import argparse
 from util.experiments import store_experiment
+
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -16,9 +20,6 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from tqdm.notebook import tqdm
-from util.train_helper import execute_epoch
-from datetime import datetime as dt
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -47,8 +48,8 @@ if __name__ == "__main__":
         help="Path to directory where evaluation plots will be saved in",
     )
     args = parser.parse_args()
-    argsDict = vars(args) 
-    
+    argsDict = vars(args)
+
     limit = argsDict["limit"]
     model = torch.load(argsDict["model"]).to(device)
     dsPath = argsDict["dataset"]
@@ -73,9 +74,18 @@ if __name__ == "__main__":
                 end="\r",
             ),
         )
- 
-    print(f"Evaluation done with \n- total average loss {epoch_loss:.2f}\n- total mean absolute difference {epoch_mad:.2f}")
+
+    print(
+        f"""Evaluation done with \n- total average loss {epoch_loss:.2f}\n- total
+          mean absolute difference {epoch_mad:.2f}"""
+    )
     output_dir_path = argsDict["output_dir"]
 
-    store_experiment(output_dir_path,epoch_loss, epoch_mad, epoch_predictions, epoch_actuals, argsDict)
-   
+    store_experiment(
+        output_dir_path,
+        epoch_loss,
+        epoch_mad,
+        epoch_predictions,
+        epoch_actuals,
+        argsDict,
+    )

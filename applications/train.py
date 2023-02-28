@@ -23,6 +23,10 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizer700Instance,
 )
 from util.weighted_mse import Weighted_MSE_Loss
+from util.train_helper import train_model, calculate_metrics
+from datetime import datetime as dt
+from util.experiments import store_experiment
+from thermostability.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,10 +37,6 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from util.train_helper import train_model, calculate_metrics
-from datetime import datetime as dt
-from util.experiments import store_experiment
-from thermostability.uni_prot_dataset import UniProtDataset
 
 
 def run_train_experiment(
@@ -93,8 +93,12 @@ def run_train_experiment(
     val_mean, val_var = eval_ds.norm_distr()
 
     criterions = {
-        "train": Weighted_MSE_Loss(train_mean, train_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
-        "val": Weighted_MSE_Loss(val_mean, val_var) if config["loss"] == 'weighted_mse' else nn.MSELoss(),
+        "train": Weighted_MSE_Loss(train_mean, train_var)
+        if config["loss"] == "weighted_mse"
+        else nn.MSELoss(),
+        "val": Weighted_MSE_Loss(val_mean, val_var)
+        if config["loss"] == "weighted_mse"
+        else nn.MSELoss(),
     }
 
     summarizer = (

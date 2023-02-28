@@ -1,12 +1,12 @@
-from torch.nn.modules.loss import _Loss, _WeightedLoss
-import torch.functional as F
-from torch import Tensor, mean, ones_like
+from torch.nn.modules.loss import _Loss
+from torch import Tensor, mean
 from scipy.stats import norm
 from math import sqrt
 import torch
 
+
 class Weighted_MSE_Loss(_Loss):
-    def __init__(self, mean: float, var: float, reduction: str = 'mean') -> None:
+    def __init__(self, mean: float, var: float, reduction: str = "mean") -> None:
         super(Weighted_MSE_Loss, self).__init__(reduction)
         self.mean = mean
         self.std = sqrt(var)
