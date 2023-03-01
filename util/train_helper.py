@@ -189,6 +189,7 @@ def train_model(
         model = torch.load(best_model_path)
 
     if dataloaders["test"]:
+        print("Executing validation on test set...")
         test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
             model,
             criterions["test"],
@@ -198,6 +199,7 @@ def train_model(
             on_batch_done=on_batch_done,
             optimizer=optimizer,
         )
+        print()
 
     return {
         "model": model,

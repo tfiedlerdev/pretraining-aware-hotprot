@@ -265,7 +265,7 @@ def run_train_experiment(
             wandb.log(
                 {
                     f"predictions_{key}": wandb.plot.scatter(
-                        table, "predictions", "labels"
+                        table, "predictions", "labels", title=key
                     )
                 }
             )
@@ -274,9 +274,12 @@ def run_train_experiment(
         log_scatter(test_predictions, test_actuals, "test")
         metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals, "val")
         wandb.log(metrics)
+        test_metrics = calculate_metrics(test_predictions, test_actuals, "test")
+        wandb.log(test_metrics)
     elif should_log:
         store_experiment(
             results_path,
+            "val",
             best_epoch_loss,
             best_epoch_mad,
             best_epoch_predictions,
@@ -286,6 +289,7 @@ def run_train_experiment(
         )
         store_experiment(
             results_path,
+            "test",
             test_epoch_loss,
             test_mad,
             test_predictions,

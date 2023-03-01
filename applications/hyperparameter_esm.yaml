@@ -17,9 +17,9 @@ parameters:
   model_hidden_layers:
     values: [2]
   model_first_hidden_units:
-    values: [1024]
+    values: [512,1024]
   epochs:
-    values: [5]
+    values: [30]
   val_on_trainset:
     values: ["false"]
   optimizer:
@@ -39,6 +39,6 @@ parameters:
   model_dropoutrate:
     values: [0.5]
   summarizer_activation: 
-    values: ["relu"]
+    values: ["relu", "identity"]
   summarizer_mode:
     values: [ "per_residue", "per_repr_position"]

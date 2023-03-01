@@ -58,7 +58,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
         
             self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
             diff = len(seq_thermos)-len(self.filename_thermo_seq)  
-            print(f"Omitted {diff} sequences of {os.path.basename(dsFilePath)} because they have not been pregenerated")
+            print(f"Omitted {diff} samples of {os.path.basename(dsFilePath)} because their sequences have not been pregenerated")
         
     def norm_distr(self):
         temps = [thermo for (filename, thermo, seq) in self.filename_thermo_seq]
