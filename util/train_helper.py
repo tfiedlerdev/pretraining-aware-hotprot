@@ -10,7 +10,7 @@ import pandas as pd
 from typing_extensions import TypedDict, Literal
 
 
-def calculate_metrics(predictions, labels, key:str):
+def calculate_metrics(predictions, labels, key: str):
     diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
     return {
         f"best_epoch_spearman_r_s_{key}": spearmanr(predictions, labels).correlation,
@@ -31,7 +31,6 @@ def execute_epoch(
     ] = lambda idx, outputs, loss, running_mad: None,
     optimizer: torch.optim.Optimizer = None,
 ):
-
     epoch_predictions = torch.tensor([])
     epoch_actuals = torch.tensor([])
     running_loss = 0.0

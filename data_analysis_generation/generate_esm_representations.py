@@ -9,6 +9,7 @@ from typing import Optional
 from util.telegram import TelegramBot
 from util.esm import ESMEmbeddings
 from util.prot_t5 import ProtT5Embeddings
+import traceback
 
 
 class SequencesDataset(Dataset):
@@ -36,7 +37,7 @@ def generate_representations(
             f"Generating remaining s_s representations for {len(sequences)} sequences"
         )
         response = telegram_bot.send_telegram(f"Generating first batch...")
-    messageId = response["result"]["message_id"]
+        messageId = response["result"]["message_id"]
 
     os.makedirs(dir_path, exist_ok=True)
 
@@ -156,6 +157,7 @@ if __name__ == "__main__":
             telegram_bot.send_telegram("Done!")
     except Exception as e:
         print("Exception raised: ", e)
+        print(traceback.format_exc())
         if telegram_bot:
             telegram_bot.send_telegram(
                 "Generation of representations failed with error message: " + str(e)

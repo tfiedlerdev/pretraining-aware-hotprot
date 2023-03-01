@@ -7,14 +7,12 @@ import regex as re
 class ProtT5Embeddings:
     # Source: https://github.com/agemagician/ProtTrans#quick
     def __init__(self):
-        self.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-            )
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         # Load the tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(
             "Rostlab/prot_t5_xl_half_uniref50-enc", do_lower_case=False
-        ).to(self.device)
+        )
 
         # Load the model
         self.model = T5EncoderModel.from_pretrained(
@@ -29,8 +27,7 @@ class ProtT5Embeddings:
         # replace all rare/ambiguous amino acids by X and introduce white-
         # space between all amino acids
         sequences = [
-            " ".join(list(re.sub(r"[UZOB]", "X", sequence)))
-            for sequence in sequences
+            " ".join(list(re.sub(r"[UZOB]", "X", sequence))) for sequence in sequences
         ]
 
         # tokenize sequences and pad up to the longest sequence in the batch

@@ -4,7 +4,6 @@ from collections import OrderedDict
 from typing import Union
 
 
-
 def create_fc_layers(
     num: int,
     input_size: int,
