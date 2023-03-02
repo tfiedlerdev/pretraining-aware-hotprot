@@ -14,7 +14,7 @@ def store_experiment(
     epoch_mad: float,
     epoch_predictions: "list[float]",
     epoch_actuals: "list[float]",
-    args: Optional[dict]=None,
+    args: Optional[dict] = None,
     epoch_mads: "dict[Literal['train', 'val'], list[float]]" = None,
 ):
     plot_predictions(
@@ -41,6 +41,6 @@ def store_experiment(
 
     metrics = calculate_metrics(epoch_predictions, epoch_actuals, key)
     with open(os.path.join(output_dir_path, f"{key}_metrics.json"), "w") as f:
-        json.dump(metrics, f,indent=5)
+        json.dump(metrics, f, indent=5)
 
     print(f"Results stored in {output_dir_path}")

@@ -2,6 +2,7 @@ from torch import nn
 import torch
 from collections import OrderedDict
 
+
 def create_fc_layers(
     num: int,
     input_size: int,

@@ -53,5 +53,4 @@ class ProtT5Embeddings:
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        
         return emb_0

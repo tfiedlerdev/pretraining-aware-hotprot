@@ -52,19 +52,33 @@ class ThermostabilityPregeneratedDataset(Dataset):
         if not os.path.exists(dsFilePath):
             raise Exception(f"{dsFilePath} does not exist.")
         self.representations_dir = f"data/{representation_key}"
-        with open(f"{self.representations_dir}/sequences.csv", newline='\n') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
-            self.sequenceToFilename = {sequence: filename for (i, (sequence, filename)) in enumerate(spamreader) if i!=0}
+        with open(f"{self.representations_dir}/sequences.csv", newline="\n") as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=",", skipinitialspace=True)
+            self.sequenceToFilename = {
+                sequence: filename
+                for (i, (sequence, filename)) in enumerate(spamreader)
+                if i != 0
+            }
 
-        self.limit=limit
-        with open(dsFilePath, newline='\n') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=',', skipinitialspace=True)
-            seq_thermos = [(seq,float(thermo)) for (i,(seq, thermo)) in enumerate(spamreader) if i!=0]
-        
-            self.filename_thermo_seq = [(self.sequenceToFilename[seq], thermo, seq) for (seq, thermo) in seq_thermos if seq in self.sequenceToFilename]
-            diff = len(seq_thermos)-len(self.filename_thermo_seq)  
-            print(f"Omitted {diff} samples of {os.path.basename(dsFilePath)} because their sequences have not been pregenerated")
-        
+        self.limit = limit
+        with open(dsFilePath, newline="\n") as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=",", skipinitialspace=True)
+            seq_thermos = [
+                (seq, float(thermo))
+                for (i, (seq, thermo)) in enumerate(spamreader)
+                if i != 0
+            ]
+
+            self.filename_thermo_seq = [
+                (self.sequenceToFilename[seq], thermo, seq)
+                for (seq, thermo) in seq_thermos
+                if seq in self.sequenceToFilename
+            ]
+            diff = len(seq_thermos) - len(self.filename_thermo_seq)
+            print(
+                f"Omitted {diff} samples of {os.path.basename(dsFilePath)} because their sequences have not been pregenerated"
+            )
+
     def norm_distr(self):
         temps = [thermo for (filename, thermo, seq) in self.filename_thermo_seq]
         return calc_norm(temps)
@@ -75,6 +89,6 @@ class ThermostabilityPregeneratedDataset(Dataset):
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
-            s_s = torch.load(f) 
-            
+            s_s = torch.load(f)
+
         return s_s, torch.tensor(thermo, dtype=torch.float32)
