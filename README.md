@@ -27,7 +27,11 @@ These steps can be taken to setup the project on a linux machine.
 1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
 2. `conda env create -f environment.yml`
 3. `conda activate hotprot`
-4. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
+4. Because the package `transformers` automatically installs a torch version that we don't want, we have to uninstall it first, so we can install ours.
+```sh
+pip uninstall torch
+```
+5. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
 ```sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 pip install fair-esm

@@ -76,7 +76,8 @@ class ThermostabilityPregeneratedDataset(Dataset):
             ]
             diff = len(seq_thermos) - len(self.filename_thermo_seq)
             print(
-                f"Omitted {diff} samples of {os.path.basename(dsFilePath)} because their sequences have not been pregenerated"
+                f"""Omitted {diff} samples of {os.path.basename(dsFilePath)} because
+                 their sequences have not been pregenerated"""
             )
 
     def norm_distr(self):

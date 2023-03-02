@@ -36,7 +36,7 @@ def generate_representations(
         telegram_bot.send_telegram(
             f"Generating remaining s_s representations for {len(sequences)} sequences"
         )
-        response = telegram_bot.send_telegram(f"Generating first batch...")
+        response = telegram_bot.send_telegram("Generating first batch...")
         messageId = response["result"]["message_id"]
 
     os.makedirs(dir_path, exist_ok=True)
@@ -70,7 +70,6 @@ def generate_representations(
                 ESMEmbeddings() if model == "esm" else ProtT5Embeddings()
             )
             emb = embedding_generator(sequences=inputs)
-
             batchesPredicted += 1
             with open(labels_file, "a") as csv:
                 for s, data in enumerate(emb):
@@ -91,11 +90,13 @@ def generate_representations(
             if telegram_bot:
                 telegram_bot.edit_text_message(
                     messageId,
-                    f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]",
+                    f"""Done with {index}/{numBatches} batches (hours to go:
+                      {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]""",
                 )
 
             print(
-                f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]"
+                f"""Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)})
+                 [last update: {now.hour}:{now.minute}]"""
             )
 
 

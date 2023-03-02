@@ -1,4 +1,4 @@
-name: hotprot
+name: js
 channels:
   - conda-forge
   - defaults
@@ -9,6 +9,7 @@ dependencies:
   - argon2-cffi=21.3.0=pyhd3eb1b0_0
   - argon2-cffi-bindings=21.2.0=py38h7f8727e_0
   - asttokens=2.0.5=pyhd3eb1b0_0
+  - attrs=22.2.0=pyh71513ae_0
   - backcall=0.2.0=pyhd3eb1b0_0
   - beautifulsoup4=4.11.1=py38h06a4308_0
   - bleach=4.1.0=pyhd3eb1b0_0
@@ -59,6 +60,7 @@ dependencies:
   - notebook=6.5.2=py38h06a4308_0
   - notebook-shim=0.2.2=py38h06a4308_0
   - openssl=1.1.1t=h7f8727e_0
+  - packaging=23.0=pyhd8ed1ab_0
   - pandocfilters=1.5.0=pyhd3eb1b0_0
   - parso=0.8.3=pyhd3eb1b0_0
   - pexpect=4.8.0=pyhd3eb1b0_3
@@ -76,6 +78,7 @@ dependencies:
   - python=3.8.16=h7a1cb2a_2
   - python-dateutil=2.8.2=pyhd3eb1b0_0
   - python-fastjsonschema=2.16.2=py38h06a4308_0
+  - python_abi=3.8=2_cp38
   - pyzmq=23.2.0=py38h6a678d5_0
   - readline=8.2=h5eee18b_0
   - send2trash=1.8.0=pyhd3eb1b0_1
@@ -90,7 +93,6 @@ dependencies:
   - tk=8.6.12=h1ccaba5_0
   - tornado=6.2=py38h5eee18b_0
   - traitlets=5.7.1=py38h06a4308_0
-  - typing_extensions=4.4.0=py38h06a4308_0
   - wcwidth=0.2.5=pyhd3eb1b0_0
   - webencodings=0.5.1=py38_1
   - websocket-client=0.58.0=py38h06a4308_4
@@ -102,12 +104,12 @@ dependencies:
   - zlib=1.2.13=h5eee18b_0
   - pip:
     - absl-py==1.4.0
+    - accelerate==0.16.0
     - aiohttp==3.8.4
     - aiosignal==1.3.1
     - antlr4-python3-runtime==4.9.3
     - appdirs==1.4.4
     - async-timeout==4.0.2
-    - attrs==22.2.0
     - biopython==1.81
     - black==23.1.0
     - charset-normalizer==3.0.1
@@ -119,6 +121,7 @@ dependencies:
     - dm-tree==0.1.8
     - docker-pycreds==0.4.0
     - einops==0.6.0
+    - filelock==3.9.0
     - flake8==6.0.0
     - fonttools==4.38.0
     - frozenlist==1.3.3
@@ -127,6 +130,7 @@ dependencies:
     - gitpython==3.1.31
     - h5py==3.8.0
     - hjson==3.1.0
+    - huggingface-hub==0.12.1
     - kiwisolver==1.4.4
     - lightning-utilities==0.7.1
     - matplotlib==3.7.0
@@ -137,7 +141,6 @@ dependencies:
     - ninja==1.11.1
     - numpy==1.24.2
     - omegaconf==2.3.0
-    - packaging==23.0
     - pandas==1.5.3
     - pathspec==0.11.0
     - pathtools==0.1.2
@@ -150,15 +153,19 @@ dependencies:
     - pyparsing==3.0.9
     - pytz==2022.7.1
     - pyyaml==6.0
+    - regex==2022.10.31
     - requests==2.28.2
     - scipy==1.10.1
     - seaborn==0.12.2
+    - sentencepiece==0.1.97
     - sentry-sdk==1.16.0
     - setproctitle==1.3.2
     - smmap==5.0.0
     - tokenize-rt==5.0.0
+    - tokenizers==0.13.2
     - tomli==2.0.1
     - tqdm==4.64.1
+    - transformers==4.26.1
     - triton==1.0.0
     - typing-extensions==4.5.0
     - urllib3==1.26.14

@@ -1,7 +1,7 @@
 from typing import Any
 import torch
 from transformers import T5Tokenizer, T5EncoderModel
-import regex as re
+import re
 
 
 class ProtT5Embeddings:
@@ -11,17 +11,16 @@ class ProtT5Embeddings:
 
         # Load the tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(
-            "Rostlab/prot_t5_xl_half_uniref50-enc", do_lower_case=False
-        )
+            "Rostlab/prot_t5_xl_half_uniref50-enc", do_lower_case=False)
 
         # Load the model
         self.model = T5EncoderModel.from_pretrained(
             "Rostlab/prot_t5_xl_half_uniref50-enc"
         ).to(self.device)
-
+        self.model = self.model.eval()
         # only GPUs support half-precision currently; if you want to run on CPU
         # use full-precision (not recommended, much slower)
-        self.model.full() if self.device == "cpu" else self.model.half()
+        # self.model.full() if self.device == "cpu" else self.model.half()
 
     def __call__(self, sequences) -> Any:
         # replace all rare/ambiguous amino acids by X and introduce white-
@@ -48,9 +47,11 @@ class ProtT5Embeddings:
 
         # extract residue embeddings for the first ([0,:]) sequence in the
         # batch and remove padded & special tokens ([0,:7])
-        emb_0 = embedding_rpr.last_hidden_state[0, :7]  # shape (7 x 1024)
+        emb = []
+        for index, seq in enumerate(sequences):
+            emb.append(embedding_rpr.last_hidden_state[index, :len(seq)])
         # same for the second ([1,:]) sequence but taking into account
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        return emb_0
+        return emb
