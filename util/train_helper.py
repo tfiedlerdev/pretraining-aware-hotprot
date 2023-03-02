@@ -47,7 +47,6 @@ def execute_epoch(
         epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
         # statistics
-        batch_size = len(inputs)
         batch_loss = loss.item()
 
         running_loss += batch_loss
@@ -118,7 +117,7 @@ def train_model(
                         if max_gradient_clip:
                             threshold = max_gradient_clip
                             for p in model.parameters():
-                                if p.grad != None:
+                                if p.grad is not None:
                                     if p.grad.norm() > threshold:
                                         torch.nn.utils.clip_grad_norm_(p, threshold)
                         optimizer.step()
@@ -190,6 +189,7 @@ def train_model(
         model = torch.load(best_model_path)
 
     if dataloaders["test"]:
+        print("Executing validation on test set...")
         test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
             model,
             criterions["test"],
@@ -199,6 +199,7 @@ def train_model(
             on_batch_done=on_batch_done,
             optimizer=optimizer,
         )
+        print()
 
     return {
         "model": model,

@@ -1,8 +1,6 @@
 from torch import nn
 import torch
 from collections import OrderedDict
-from typing import Union
-
 
 def create_fc_layers(
     num: int,

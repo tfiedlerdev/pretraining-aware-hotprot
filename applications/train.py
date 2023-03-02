@@ -24,6 +24,10 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerAverage,
 )
 from util.weighted_mse import Weighted_MSE_Loss
+from util.train_helper import train_model, calculate_metrics
+from datetime import datetime as dt
+from util.experiments import store_experiment
+from thermostability.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -34,10 +38,6 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
-from util.train_helper import train_model, calculate_metrics
-from datetime import datetime as dt
-from util.experiments import store_experiment
-from thermostability.uni_prot_dataset import UniProtDataset
 
 
 def run_train_experiment(
@@ -244,7 +244,7 @@ def run_train_experiment(
     best_epoch_predictions = train_result["best_epoch_predictions"]
     best_epoch_actuals = train_result["best_epoch_actuals"]
     best_epoch_loss = train_result["best_epoch_loss"]
-    best_epoch_mad = train_result["best_epoch_mad"]
+    best_epoch_mad = train_result["best_val_mad"]
     epoch_mads = train_result["epoch_mads"]
     test_predictions = train_result["test_predictions"]
     test_actuals = train_result["test_actuals"]
@@ -265,7 +265,7 @@ def run_train_experiment(
             wandb.log(
                 {
                     f"predictions_{key}": wandb.plot.scatter(
-                        table, "predictions", "labels"
+                        table, "predictions", "labels", title=key
                     )
                 }
             )
@@ -274,9 +274,12 @@ def run_train_experiment(
         log_scatter(test_predictions, test_actuals, "test")
         metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals, "val")
         wandb.log(metrics)
+        test_metrics = calculate_metrics(test_predictions, test_actuals, "test")
+        wandb.log(test_metrics)
     elif should_log:
         store_experiment(
             results_path,
+            "val",
             best_epoch_loss,
             best_epoch_mad,
             best_epoch_predictions,
@@ -286,6 +289,7 @@ def run_train_experiment(
         )
         store_experiment(
             results_path,
+            "test",
             test_epoch_loss,
             test_mad,
             test_predictions,

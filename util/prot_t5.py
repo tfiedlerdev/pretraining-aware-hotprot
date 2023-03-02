@@ -53,7 +53,5 @@ class ProtT5Embeddings:
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        # if you want to derive a single representation (per-protein embedding)
-        # for the whole protein
-        emb_0_per_protein = emb_0.mean(dim=0)  # shape (1024)
-        return emb_0_per_protein
+        
+        return emb_0

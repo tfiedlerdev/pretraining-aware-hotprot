@@ -1,6 +1,5 @@
 from torch import nn
 import torch
-from collections import OrderedDict
 from thermostability.hotinfer_pregenerated import create_fc_layers
 
 

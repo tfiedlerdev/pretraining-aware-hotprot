@@ -1,6 +1,5 @@
-from torch.nn.modules.loss import _Loss, _WeightedLoss
-import torch.functional as F
-from torch import Tensor, mean, ones_like
+from torch.nn.modules.loss import _Loss
+from torch import Tensor, mean
 from scipy.stats import norm
 from math import sqrt
 import torch

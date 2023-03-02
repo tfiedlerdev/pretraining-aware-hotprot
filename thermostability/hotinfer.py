@@ -3,7 +3,6 @@ import torch
 from esm_custom import esm
 from typing import List
 import os
-import pickle
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
