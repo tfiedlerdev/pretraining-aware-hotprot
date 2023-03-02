@@ -1,4 +1,4 @@
-name: js
+name: hotprot
 channels:
   - conda-forge
   - defaults
