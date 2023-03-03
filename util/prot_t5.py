@@ -2,12 +2,13 @@ from typing import Any
 import torch
 from transformers import T5Tokenizer, T5EncoderModel
 import re
+from typing import Literal
 
 
 class ProtT5Embeddings:
     # Source: https://github.com/agemagician/ProtTrans#quick
-    def __init__(self):
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def __init__(self, device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
+        self.device = device
 
         # Load the tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(
@@ -22,7 +23,7 @@ class ProtT5Embeddings:
         # use full-precision (not recommended, much slower)
         # self.model.full() if self.device == "cpu" else self.model.half()
 
-    def __call__(self, sequences) -> Any:
+    def __call__(self, sequences, representation_key: Literal['prott5_avg', 'prott5'] = "prott5_avg") -> Any:
         # replace all rare/ambiguous amino acids by X and introduce white-
         # space between all amino acids
         sequences = [
@@ -54,4 +55,4 @@ class ProtT5Embeddings:
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        return emb
+        return emb if representation_key == "prott5" else emb.mean(dim=1)
