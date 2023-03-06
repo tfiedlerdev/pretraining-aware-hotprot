@@ -7,12 +7,18 @@ from typing import Literal
 
 class ProtT5Embeddings:
     # Source: https://github.com/agemagician/ProtTrans#quick
-    def __init__(self, device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
+    def __init__(
+        self,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ):
         self.device = device
 
         # Load the tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(
-            "Rostlab/prot_t5_xl_half_uniref50-enc", do_lower_case=False)
+            "Rostlab/prot_t5_xl_half_uniref50-enc", do_lower_case=False
+        )
 
         # Load the model
         self.model = T5EncoderModel.from_pretrained(
@@ -23,7 +29,11 @@ class ProtT5Embeddings:
         # use full-precision (not recommended, much slower)
         # self.model.full() if self.device == "cpu" else self.model.half()
 
-    def __call__(self, sequences, representation_key: Literal['prott5_avg', 'prott5'] = "prott5_avg") -> Any:
+    def __call__(
+        self,
+        sequences,
+        representation_key: Literal["prott5_avg", "prott5"] = "prott5_avg",
+    ) -> Any:
         # replace all rare/ambiguous amino acids by X and introduce white-
         # space between all amino acids
         sequences = [
@@ -50,9 +60,9 @@ class ProtT5Embeddings:
         # batch and remove padded & special tokens ([0,:7])
         emb = []
         for index, seq in enumerate(sequences):
-            emb.append(embedding_rpr.last_hidden_state[index, :len(seq)])
+            emb.append(embedding_rpr.last_hidden_state[index, : len(seq)])
         # same for the second ([1,:]) sequence but taking into account
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        return emb if representation_key == "prott5" else emb.mean(dim=1)
+        return emb if representation_key == "prott5" else [el.mean(dim=0) for el in emb]
