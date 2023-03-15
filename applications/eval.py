@@ -39,6 +39,13 @@ if __name__ == "__main__":
         default="data/test.csv",
         help="Path to dataset csv with format: sequence, melting point",
     )
+    parser.add_argument(
+        "--representation_key",
+        type=str,
+        default="s_s_avg",
+        choices=["s_s", "s_s_avg"],
+        help='Representation key. Use "s_s" (per residue representation) or "s_s_avg"(averaged s_s -> whole protein representation) for esm representations',
+    )
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
     parser.add_argument(
         "--output_dir",
@@ -54,7 +61,7 @@ if __name__ == "__main__":
     model = torch.load(argsDict["model"]).to(device)
     dsPath = argsDict["dataset"]
     ds = ThermostabilityPregeneratedDataset(
-        dsPath, limit=limit, representation_key="s_s_avg"
+        dsPath, limit=limit, representation_key=argsDict["representation_key"]
     )
     dataloader = DataLoader(ds, argsDict["batch_size"], shuffle=False)
     with torch.no_grad():
@@ -83,6 +90,7 @@ if __name__ == "__main__":
 
     store_experiment(
         output_dir_path,
+        "eval",
         epoch_loss,
         epoch_mad,
         epoch_predictions,
