@@ -11,6 +11,10 @@ These are the predictions of our pretrained model on the test set. Reproduce thi
 ![image](https://user-images.githubusercontent.com/29177177/225330082-aa0a784a-e2b5-459b-b1f5-5213d84ed17e.png)
 ![image](https://user-images.githubusercontent.com/29177177/225330226-247779bf-5bd3-4079-b393-e487c8f91c7c.png)
 
+Predictions on Validation set:
+
+![val_predictions](https://user-images.githubusercontent.com/29177177/225331716-7c131750-1933-4abf-9b2d-fb1ae9e4af51.png)
+
 
 
 ## Resouces
