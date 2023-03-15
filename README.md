@@ -1,15 +1,15 @@
 # HotProt
 
 This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. 
-With our pretrained model we have achieved a mean absolute difference (MAD) of 3.77°C between actual and predicted melting points over our validation set. 
+With our pretrained model we have achieved a mean absolute difference (MAD) of 3.77°C between actual and predicted melting points over our test set. 
 As there are multiple melting point measurements for many of the different proteins, a MAD of 0°C would not be possible. 
-In our validation set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.337`, which would consequently also be the MAD of a perfect model.
+In our test set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.262`, which would consequently also be the MAD of a perfect model.
 
 ## Results
-These are the predictions of our pretrained model on the validation set. Reproduce this via `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg` (the results might be slightly different due to different model initialization).
+These are the predictions of our pretrained model on the test set. Reproduce this via `python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg --early_stopping` (the results might be slightly different due to different model initialization).
 
-![image](https://user-images.githubusercontent.com/29177177/219954806-affd41d0-305b-4081-8151-32e911050065.png)
-![image](https://user-images.githubusercontent.com/29177177/219954823-4dc1d414-830a-42ad-9d4e-7bce26ba10fd.png)
+![image](https://user-images.githubusercontent.com/29177177/225330082-aa0a784a-e2b5-459b-b1f5-5213d84ed17e.png)
+![image](https://user-images.githubusercontent.com/29177177/225330226-247779bf-5bd3-4079-b393-e487c8f91c7c.png)
 
 
 
