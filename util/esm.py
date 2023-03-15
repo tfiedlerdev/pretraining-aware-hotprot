@@ -1,11 +1,17 @@
 from typing import Any
 import torch
 from esm_custom import esm
+from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
 
 class ESMEmbeddings:
-    def __init__(self) -> None:
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def __init__(
+        self,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ) -> None:
+        self.device = device
 
         if not torch.cuda.is_available():
             print(
@@ -21,5 +27,7 @@ class ESMEmbeddings:
 
         self.esmfold = esm.pretrained.esmfold_v1().to(self.device)
 
-    def __call__(self, sequences) -> Any:
-        return self.esmfold.infer(sequences=sequences)["s_s"]
+    def __call__(self, sequences, representation_key: RepresentationKey = "s_s") -> Any:
+        return self.esmfold.infer(
+            sequences=sequences, representation_key=representation_key
+        )[representation_key]

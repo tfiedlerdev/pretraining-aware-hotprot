@@ -9,6 +9,8 @@ from typing import Optional
 from util.telegram import TelegramBot
 from util.esm import ESMEmbeddings
 from util.prot_t5 import ProtT5Embeddings
+import traceback
+from thermostability.hotinfer import RepresentationKeysComb
 
 
 class SequencesDataset(Dataset):
@@ -26,17 +28,17 @@ class SequencesDataset(Dataset):
 def generate_representations(
     dir_path,
     sequences,
-    store_only_mean: bool,
     batch_size: int,
     model: str,
+    repr_key: RepresentationKeysComb,
     telegram_bot: Optional[TelegramBot],
 ):
     if telegram_bot:
         telegram_bot.send_telegram(
             f"Generating remaining s_s representations for {len(sequences)} sequences"
         )
-        response = telegram_bot.send_telegram(f"Generating first batch...")
-    messageId = response["result"]["message_id"]
+        response = telegram_bot.send_telegram("Generating first batch...")
+        messageId = response["result"]["message_id"]
 
     os.makedirs(dir_path, exist_ok=True)
 
@@ -68,8 +70,7 @@ def generate_representations(
             embedding_generator = (
                 ESMEmbeddings() if model == "esm" else ProtT5Embeddings()
             )
-            emb = embedding_generator(sequences=inputs)
-
+            emb = embedding_generator(sequences=inputs, representation_key=repr_key)
             batchesPredicted += 1
             with open(labels_file, "a") as csv:
                 for s, data in enumerate(emb):
@@ -77,8 +78,6 @@ def generate_representations(
                     file_name = str(maxFilePrefix) + ".pt"
                     file_path = os.path.join(dir_path, file_name)
                     if not os.path.exists(file_path):
-                        if store_only_mean:
-                            data = data.mean(0)
                         with open(file_path, "wb") as f:
                             torch.save(data.cpu(), f)
                         csv.write(f"{inputs[s]}, {file_name}\n")
@@ -90,11 +89,13 @@ def generate_representations(
             if telegram_bot:
                 telegram_bot.edit_text_message(
                     messageId,
-                    f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]",
+                    f"""Done with {index}/{numBatches} batches (hours to go:
+                      {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]""",
                 )
 
             print(
-                f"Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)}) [last update: {now.hour}:{now.minute}]"
+                f"""Done with {index}/{numBatches} batches (hours to go: {int(hoursToGo)})
+                 [last update: {now.hour}:{now.minute}]"""
             )
 
 
@@ -122,10 +123,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "output_dir", type=str, help="Directory in which to place the representations"
     )
-    parser.add_argument("--store_only_mean", action="store_true", default=False)
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--model", type=str, default="esm", choices=["esm", "protT5"])
     parser.add_argument("--telegram", action="store_true", default=False)
+    parser.add_argument(
+        "--repr_key",
+        type=str,
+        default="s_s_avg",
+        choices=[
+            "prott5_avg",
+            "prott5",
+            "esm_s_A",
+            "esm_s_B",
+            "s_s_0_A",
+            "s_s_0_B",
+            "esm_s_B_avg",
+            "s_s_avg",
+        ],
+    )
 
     args = vars(parser.parse_args())
 
@@ -147,8 +162,8 @@ if __name__ == "__main__":
         generate_representations(
             args["output_dir"],
             remaining_seqs,
-            args["store_only_mean"],
             batch_size=args["batch_size"],
+            repr_key=args["repr_key"],
             model=args["model"],
             telegram_bot=telegram_bot,
         )
@@ -156,6 +171,7 @@ if __name__ == "__main__":
             telegram_bot.send_telegram("Done!")
     except Exception as e:
         print("Exception raised: ", e)
+        print(traceback.format_exc())
         if telegram_bot:
             telegram_bot.send_telegram(
                 "Generation of representations failed with error message: " + str(e)

@@ -10,7 +10,7 @@ import pandas as pd
 from typing_extensions import TypedDict, Literal
 
 
-def calculate_metrics(predictions, labels, key:str):
+def calculate_metrics(predictions, labels, key: str):
     diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
     return {
         f"best_epoch_spearman_r_s_{key}": spearmanr(predictions, labels).correlation,
