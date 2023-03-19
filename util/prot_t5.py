@@ -65,4 +65,8 @@ class ProtT5Embeddings:
         # different sequence lengths ([1,:8])
         # emb_1 = embedding_rpr.last_hidden_state[1, :8]  # shape (8 x 1024)
 
-        return emb if representation_key == "prott5" else [el.mean(dim=0) for el in emb]
+        return (
+            torch.stack(emb)
+            if representation_key == "prott5"
+            else torch.stack([el.mean(dim=0) for el in emb])
+        )

@@ -27,7 +27,6 @@ from util.weighted_mse import Weighted_MSE_Loss
 from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
-from thermostability.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -47,11 +46,8 @@ def run_train_experiment(
     model_parallel = config["model_parallel"] == "true"
     val_on_trainset = config["val_on_trainset"] == "true"
     limit = config["dataset_limit"]
-    seq_length = config["seq_length"]
     train_ds = (
-        UniProtDataset("data/train.csv", limit=limit, seq_length=seq_length)
-        if config["dataset"] == "uni_prot"
-        else ThermostabilityPregeneratedDataset(
+        ThermostabilityPregeneratedDataset(
             "data/train.csv", limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
@@ -61,9 +57,7 @@ def run_train_experiment(
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
 
     eval_ds = (
-        UniProtDataset(valFileName, limit=limit, seq_length=seq_length)
-        if config["dataset"] == "uni_prot"
-        else ThermostabilityPregeneratedDataset(
+        ThermostabilityPregeneratedDataset(
             valFileName, limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
@@ -71,9 +65,7 @@ def run_train_experiment(
     )
 
     test_ds = (
-        UniProtDataset("data/test.csv", limit=limit, seq_length=seq_length)
-        if config["dataset"] == "uni_prot"
-        else ThermostabilityPregeneratedDataset(
+        ThermostabilityPregeneratedDataset(
             "data/test.csv", limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
@@ -150,7 +142,7 @@ def run_train_experiment(
 
     input_sizes = {
         "esm_s_B_avg": 2560,
-        "uni_prot": 1024,
+        "prott5_avg": 1024,
         "s_s_0_A": 148 * 1024,
         "s_s_0_avg": 1024,
         "s_s_avg": 1024,
@@ -210,7 +202,7 @@ def run_train_experiment(
         )
     )
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
-    if not use_wandb and should_log:
+    if should_log:
         os.makedirs(results_path, exist_ok=True)
 
     def should_stop(val_epoch_losses: "list[float]"):
@@ -236,9 +228,7 @@ def run_train_experiment(
         prepare_labels=lambda x: x.to("cuda:0")
         if not model_parallel
         else x.to("cuda:1"),
-        best_model_path=os.path.join(results_path, "model.pt")
-        if not use_wandb and should_log
-        else None,
+        best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
     best_epoch_predictions = train_result["best_epoch_predictions"]
@@ -276,7 +266,8 @@ def run_train_experiment(
         wandb.log(metrics)
         test_metrics = calculate_metrics(test_predictions, test_actuals, "test")
         wandb.log(test_metrics)
-    elif should_log:
+
+    if should_log:
         store_experiment(
             results_path,
             "val",
@@ -365,9 +356,11 @@ if __name__ == "__main__":
     if use_wandb:
         with wandb.init(config=argsDict):
             run_train_experiment(
-                config=wandb.config, use_wandb=True, results_path=results_path
+                config=wandb.config,
+                use_wandb=True,
+                results_path=results_path,
+                should_log=should_log,
             )
-
     else:
         run_train_experiment(
             config=argsDict,

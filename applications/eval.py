@@ -32,6 +32,15 @@ if __name__ == "__main__":
         default=1000000,
         help="Maximum number of samples to run evaluation on",
     )
+
+    parser.add_argument(
+        "--name",
+        "-n",
+        type=str,
+        default="test",
+        help="Name is appended to the different log file names",
+    )
+
     parser.add_argument(
         "--dataset",
         "-d",
@@ -39,13 +48,15 @@ if __name__ == "__main__":
         default="data/test.csv",
         help="Path to dataset csv with format: sequence, melting point",
     )
+
     parser.add_argument(
         "--representation_key",
         type=str,
         default="s_s_avg",
-        choices=["s_s", "s_s_avg"],
-        help='Representation key. Use "s_s" (per residue representation) or "s_s_avg"(averaged s_s -> whole protein representation) for esm representations',
+        choices=["s_s", "s_s_avg", "prott5_avg"],
+        help='Representation key. Use "s_s" (per residue representation), "s_s_avg"(averaged s_s -> whole protein representation) for esm representations or "prott5_avg"(averaged prott5 embeddings)',
     )
+
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
     parser.add_argument(
         "--output_dir",
@@ -87,10 +98,10 @@ if __name__ == "__main__":
           mean absolute difference {epoch_mad:.2f}"""
     )
     output_dir_path = argsDict["output_dir"]
-
+    name = argsDict["name"]
     store_experiment(
         output_dir_path,
-        "eval",
+        name,
         epoch_loss,
         epoch_mad,
         epoch_predictions,

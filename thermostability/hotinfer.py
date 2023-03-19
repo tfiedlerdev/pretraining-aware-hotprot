@@ -20,9 +20,11 @@ class HotInferModel(nn.Module):
         thermo_module: nn.Module = HotInferPregeneratedFC(),
         pad_representations=False,
         model_parallel=False,
+        caching=True,
     ):
         super().__init__()
         self.model_parallel = model_parallel
+        self.caching = caching
 
         self.repr_model = (
             ProtT5Embeddings(device="cuda:0")
@@ -42,7 +44,7 @@ class HotInferModel(nn.Module):
         self.sequences_filepath = os.path.join(
             self.representations_dir, "sequences.csv"
         )
-        if os.path.exists(self.sequences_filepath):
+        if os.path.exists(self.sequences_filepath) and caching:
             with open(self.sequences_filepath, "r") as f:
                 reader = csv.reader(f, delimiter=",", skipinitialspace=True)
                 self.meta = dict(
@@ -70,14 +72,17 @@ class HotInferModel(nn.Module):
                     repr = self.repr_model(
                         sequences=[seq], representation_key=self.representation_key
                     )
-                    cacheFileName = f"{len(self.meta.keys())+1}.pt"
 
-                    with open(self.sequences_filepath, "a") as f:
-                        torch.save(
-                            repr, os.path.join(self.representations_dir, cacheFileName)
-                        )
-                        f.write(f"{seq}, {cacheFileName}\n")
-                        self.meta[seq] = cacheFileName
+                    if self.caching:
+                        cacheFileName = f"{len(self.meta.keys())+1}.pt"
+
+                        with open(self.sequences_filepath, "a") as f:
+                            torch.save(
+                                repr,
+                                os.path.join(self.representations_dir, cacheFileName),
+                            )
+                            f.write(f"{seq}, {cacheFileName}\n")
+                            self.meta[seq] = cacheFileName
 
                 reprs.append(
                     zero_padding_700(repr) if self.pad_representations else repr
