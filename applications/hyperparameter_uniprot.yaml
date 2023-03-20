@@ -22,7 +22,7 @@ parameters:
     min: 0.0
     max: 0.5
   epochs:
-    values: [10]
+    values: [20]
   val_on_trainset:
     values: ["false"]
   weight_regularizer:
@@ -34,8 +34,8 @@ parameters:
   batch_size:
     values: [32]
   representation_key:
-    values: ["uni_prot"]
+    values: ["prott5_avg"]
   dataset:
-    values: ["uni_prot"]
+    values: ["pregenerated"]
   loss:
-    values: ["weighted_mse"]
+    values: ["weighted_mse", "mse"]

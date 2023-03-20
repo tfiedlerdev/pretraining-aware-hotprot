@@ -1,12 +1,13 @@
 program: applications/train.py
 method: grid
-name: esm2_repr_summarizer
+name: esm2_repr_summarizer_fix_overfit
 command:
   - ${env}
   - ${interpreter}
   - ${program}
   - ${args}
   - --wandb
+  - --early_stopping
 metric:
   name: loss
   goal: minimize
@@ -16,9 +17,9 @@ parameters:
   model_hidden_layers:
     values: [2]
   model_first_hidden_units:
-    values: [1024]
+    values: [512,1024]
   epochs:
-    values: [10]
+    values: [30]
   val_on_trainset:
     values: ["false"]
   optimizer:
@@ -29,11 +30,15 @@ parameters:
     values: [32]
   representation_key:
     values: ["s_s"]
-  summarizer_type:
-    values: ["single_instance", "700_instance"]
-  summarizer_per_residue_out_size:
-    values: [1, 10, 50]
-  summarizer_num_layers:
-    values: [1, 2, 3]
+  summarizer_type: 
+    values: ["single_instance", "multi_instance", "average"]
+  summarizer_out_size:
+    values: [1]
+  summarizer_num_layers: 
+    values: [1]
   model_dropoutrate:
-    values: [0, 0.5]
+    values: [0.5]
+  summarizer_activation: 
+    values: ["relu", "identity"]
+  summarizer_mode:
+    values: [ "per_residue", "per_repr_position"]

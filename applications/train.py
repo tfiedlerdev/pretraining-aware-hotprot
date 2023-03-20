@@ -20,13 +20,13 @@ import argparse
 import os
 from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
-    RepresentationSummarizer700Instance,
+    RepresentationSummarizerMultiInstance,
+    RepresentationSummarizerAverage,
 )
 from util.weighted_mse import Weighted_MSE_Loss
 from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
-from thermostability.uni_prot_dataset import UniProtDataset
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,11 +46,8 @@ def run_train_experiment(
     model_parallel = config["model_parallel"] == "true"
     val_on_trainset = config["val_on_trainset"] == "true"
     limit = config["dataset_limit"]
-    seq_length = config["seq_length"]
     train_ds = (
-        UniProtDataset("data/train.csv", limit=limit, seq_length=seq_length)
-        if config["dataset"] == "uni_prot"
-        else ThermostabilityPregeneratedDataset(
+        ThermostabilityPregeneratedDataset(
             "data/train.csv", limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
@@ -60,37 +57,48 @@ def run_train_experiment(
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
 
     eval_ds = (
-        UniProtDataset(valFileName, limit=limit, seq_length=seq_length)
-        if config["dataset"] == "uni_prot"
-        else ThermostabilityPregeneratedDataset(
+        ThermostabilityPregeneratedDataset(
             valFileName, limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset(valFileName, limit=limit)
     )
+
+    test_ds = (
+        ThermostabilityPregeneratedDataset(
+            "data/test.csv", limit=limit, representation_key=representation_key
+        )
+        if config["dataset"] == "pregenerated"
+        else ThermostabilityDataset("data/test.csv", limit=limit)
+    )
+
     dataloaders = {
         "train": DataLoader(
             train_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700_collate
-            if config["dataset"] == "pregenerated"
-            else None,
+            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700_collate
-            if config["dataset"] == "pregenerated"
-            else None,
+            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+        ),
+        "test": DataLoader(
+            test_ds,
+            batch_size=config["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
         ),
     }
 
     train_mean, train_var = train_ds.norm_distr()
     val_mean, val_var = eval_ds.norm_distr()
+    test_mean, test_var = test_ds.norm_distr()
 
     criterions = {
         "train": Weighted_MSE_Loss(train_mean, train_var)
@@ -99,25 +107,42 @@ def run_train_experiment(
         "val": Weighted_MSE_Loss(val_mean, val_var)
         if config["loss"] == "weighted_mse"
         else nn.MSELoss(),
+        "test": Weighted_MSE_Loss(test_mean, test_var)
+        if config["loss"] == "weighted_mse"
+        else nn.MSELoss(),
     }
 
     summarizer = (
         RepresentationSummarizerSingleInstance(
-            per_residue_output_size=config["summarizer_per_residue_out_size"],
+            per_residue_output_size=config["summarizer_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
+            activation=nn.ReLU
+            if config["summarizer_activation"] == "relu"
+            else nn.Identity,
+            per_residue_summary=config["summarizer_mode"] == "per_residue",
+            p_dropout=config["model_dropoutrate"],
         )
         if config["summarizer_type"] == "single_instance"
-        else RepresentationSummarizer700Instance(
-            per_residue_output_size=config["summarizer_per_residue_out_size"],
+        else RepresentationSummarizerMultiInstance(
+            per_residue_output_size=config["summarizer_out_size"],
             num_hidden_layers=config["summarizer_num_layers"],
+            activation=nn.ReLU
+            if config["summarizer_activation"] == "relu"
+            else nn.Identity,
+            per_residue_summary=config["summarizer_mode"] == "per_residue",
+            p_dropout=config["model_dropoutrate"],
         )
-        if config["summarizer_type"] == "700_instance"
+        if config["summarizer_type"] in ["700_instance", "multi_instance"]
+        else RepresentationSummarizerAverage(
+            per_residue_summary=config["summarizer_mode"] == "per_residue"
+        )
+        if config["summarizer_type"] == "average"
         else None
     )
 
     input_sizes = {
         "esm_s_B_avg": 2560,
-        "uni_prot": 1024,
+        "prott5_avg": 1024,
         "s_s_0_A": 148 * 1024,
         "s_s_0_avg": 1024,
         "s_s_avg": 1024,
@@ -144,7 +169,7 @@ def run_train_experiment(
             p_dropout=config["model_dropoutrate"],
             summarizer=summarizer,
             thermo_module=HotInferPregeneratedFC(
-                input_len=700 * summarizer.per_residue_output_size,
+                input_len=summarizer.per_sample_output_size,
                 num_hidden_layers=config["model_hidden_layers"],
                 first_hidden_size=config["model_first_hidden_units"],
                 p_dropout=config["model_dropoutrate"],
@@ -177,16 +202,22 @@ def run_train_experiment(
         )
     )
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
-    if not use_wandb and should_log:
+    if should_log:
         os.makedirs(results_path, exist_ok=True)
-    (
-        model,
-        best_epoch_loss,
-        best_epoch_mad,
-        epoch_mads,
-        best_epoch_actuals,
-        best_epoch_predictions,
-    ) = train_model(
+
+    def should_stop(val_epoch_losses: "list[float]"):
+        if not config["early_stopping"]:
+            return False
+        if len(val_epoch_losses) < 3:
+            return False
+
+        has_improved = (
+            val_epoch_losses[-2] < val_epoch_losses[-3]
+            or val_epoch_losses[-1] < val_epoch_losses[-3]
+        )
+        return not has_improved
+
+    train_result = train_model(
         model,
         criterions,
         exp_lr_scheduler,
@@ -197,31 +228,63 @@ def run_train_experiment(
         prepare_labels=lambda x: x.to("cuda:0")
         if not model_parallel
         else x.to("cuda:1"),
-        best_model_path=os.path.join(results_path, "model.pt")
-        if not use_wandb and should_log
-        else None,
+        best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
+        should_stop=should_stop,
     )
+    best_epoch_predictions = train_result["best_epoch_predictions"]
+    best_epoch_actuals = train_result["best_epoch_actuals"]
+    best_epoch_loss = train_result["best_epoch_loss"]
+    best_epoch_mad = train_result["best_val_mad"]
+    epoch_mads = train_result["epoch_mads"]
+    test_predictions = train_result["test_predictions"]
+    test_actuals = train_result["test_actuals"]
+    test_epoch_loss = train_result["test_loss"]
+    test_mad = train_result["test_mad"]
+
     if use_wandb:
-        data = [
-            [x, y]
-            for (x, y) in zip(
-                best_epoch_predictions,
-                best_epoch_actuals,
+
+        def log_scatter(predictions, actuals, key: str):
+            data = [
+                [x, y]
+                for (x, y) in zip(
+                    predictions,
+                    actuals,
+                )
+            ]
+            table = wandb.Table(data=data, columns=["predictions", "labels"])
+            wandb.log(
+                {
+                    f"predictions_{key}": wandb.plot.scatter(
+                        table, "predictions", "labels", title=key
+                    )
+                }
             )
-        ]
-        table = wandb.Table(data=data, columns=["predictions", "labels"])
-        wandb.log({"predictions": wandb.plot.scatter(table, "predictions", "labels")})
-        metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals)
+
+        log_scatter(best_epoch_predictions, best_epoch_actuals, "val")
+        log_scatter(test_predictions, test_actuals, "test")
+        metrics = calculate_metrics(best_epoch_predictions, best_epoch_actuals, "val")
         wandb.log(metrics)
-    elif should_log:
+        test_metrics = calculate_metrics(test_predictions, test_actuals, "test")
+        wandb.log(test_metrics)
+
+    if should_log:
         store_experiment(
             results_path,
+            "val",
             best_epoch_loss,
             best_epoch_mad,
             best_epoch_predictions,
             best_epoch_actuals,
             config,
             epoch_mads,
+        )
+        store_experiment(
+            results_path,
+            "test",
+            test_epoch_loss,
+            test_mad,
+            test_predictions,
+            test_actuals,
         )
 
     return best_epoch_loss
@@ -249,11 +312,15 @@ if __name__ == "__main__":
     parser.add_argument("--weight_regularizer", type=bool, default=True)
     parser.add_argument("--seq_length", type=int, default=700)
     parser.add_argument("--nolog", action="store_true")
-    parser.add_argument("--summarizer_per_residue_out_size", type=int, default=1)
+    parser.add_argument("--early_stopping", action="store_true", default=False)
+    parser.add_argument("--summarizer_out_size", type=int, default=1)
+    parser.add_argument(
+        "--summarizer_activation", default="identity", choices=["relu", "identity"]
+    )
     parser.add_argument(
         "--summarizer_type",
         default=None,
-        choices=[None, "single_instance", "700_instance"],
+        choices=[None, "single_instance", "700_instance", "multi_instance", "average"],
     )
     parser.add_argument(
         "--dataset",
@@ -268,12 +335,19 @@ if __name__ == "__main__":
         default="mse",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
+    parser.add_argument(
+        "--summarizer_mode",
+        type=str,
+        choices=["per_residue", "per_repr_position"],
+        default="per_residue",
+    )
     args = parser.parse_args()
 
     argsDict = vars(args)
+
     use_wandb = argsDict["wandb"]
     del argsDict["wandb"]
-    should_log = argsDict["nolog"]
+    should_log = not argsDict["nolog"]
     del argsDict["nolog"]
     representation_key = argsDict["representation_key"]
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
@@ -282,9 +356,11 @@ if __name__ == "__main__":
     if use_wandb:
         with wandb.init(config=argsDict):
             run_train_experiment(
-                config=wandb.config, use_wandb=True, results_path=results_path
+                config=wandb.config,
+                use_wandb=True,
+                results_path=results_path,
+                should_log=should_log,
             )
-
     else:
         run_train_experiment(
             config=argsDict,

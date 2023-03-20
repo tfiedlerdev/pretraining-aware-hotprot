@@ -7,15 +7,16 @@ import wandb
 from typing import Callable
 from scipy.stats import spearmanr
 import pandas as pd
+from typing_extensions import TypedDict, Literal
 
 
-def calculate_metrics(predictions, labels):
+def calculate_metrics(predictions, labels, key: str):
     diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
     return {
-        "best_epoch_spearman_r_s_val": spearmanr(predictions, labels).correlation,
-        "best_epoch_max_abs_diff_val": diffs.max(),
-        "best_epoch_median_abs_diff_val": diffs.median(),
-        "best_epoch_mean_abs_diff_val": diffs.mean(),
+        f"best_epoch_spearman_r_s_{key}": spearmanr(predictions, labels).correlation,
+        f"best_epoch_max_abs_diff_{key}": diffs.max(),
+        f"best_epoch_median_abs_diff_{key}": diffs.median(),
+        f"best_epoch_mean_abs_diff_{key}": diffs.mean(),
     }
 
 
@@ -66,6 +67,19 @@ def execute_epoch(
     )
 
 
+class TrainResponse(TypedDict):
+    model: nn.Module
+    best_epoch_loss: float
+    best_val_mad: float
+    epoch_mads: 'dict[Literal["train", "val"], "list[float]"]'
+    best_epoch_actuals: "list[float]"
+    best_epoch_predictions: "list[float]"
+    test_loss: float
+    test_mad: float
+    test_actuals: "list[float]"
+    test_predictions: "list[float]"
+
+
 def train_model(
     model,
     criterions,
@@ -77,13 +91,15 @@ def train_model(
     max_gradient_clip: float = 10,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
-):
+    should_stop: Callable[["list[float]"], bool] = lambda epoch_val_losses: False,
+) -> TrainResponse:
     optimizer = scheduler.optimizer
     since = time.time()
 
     if best_model_path:
         torch.save(model, best_model_path)
     best_val_mad = sys.float_info.max
+    epoch_losses = {"train": [], "val": []}
     best_epoch_loss = sys.float_info.max
     best_epoch_predictions = torch.tensor([])
     best_epoch_actuals = torch.tensor([])
@@ -135,6 +151,7 @@ def train_model(
                     optimizer=optimizer,
                 )
             epoch_mads[phase].append(epoch_mad)
+            epoch_losses[phase].append(epoch_loss)
 
             if use_wandb:
                 wandb.log(
@@ -159,6 +176,9 @@ def train_model(
                     best_epoch_actuals = epoch_actuals
                     best_epoch_predictions = epoch_predictions
         print()
+        if phase == "val" and should_stop(epoch_losses["val"]):
+            print("Stopping early...")
+            break
 
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
@@ -168,11 +188,28 @@ def train_model(
     if best_model_path:
         model = torch.load(best_model_path)
 
-    return (
-        model,
-        best_epoch_loss,
-        best_val_mad,
-        epoch_mads,
-        best_epoch_actuals,
-        best_epoch_predictions,
-    )
+    if dataloaders["test"]:
+        print("Executing validation on test set...")
+        test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
+            model,
+            criterions["test"],
+            dataloaders["test"],
+            prepare_inputs,
+            prepare_labels,
+            on_batch_done=on_batch_done,
+            optimizer=optimizer,
+        )
+        print()
+
+    return {
+        "model": model,
+        "best_epoch_loss": best_epoch_loss,
+        "best_val_mad": best_val_mad,
+        "epoch_mads": epoch_mads,
+        "best_epoch_actuals": best_epoch_actuals,
+        "best_epoch_predictions": best_epoch_predictions,
+        "test_loss": test_loss,
+        "test_mad": test_mad,
+        "test_actuals": test_actuals,
+        "test_predictions": test_predictions,
+    }

@@ -29,7 +29,7 @@ def zero_padding_collate(
         padded = zero_padding(s_s, max_size)
         padded_s_s.append(padded)
         temps.append(temp)
-    results = torch.stack(padded_s_s, 0).unsqueeze(1), torch.stack(temps)
+    results = torch.stack(padded_s_s, 0), torch.stack(temps)
     return results
 
 
@@ -44,7 +44,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
     def __init__(
         self,
         dsFilePath: str = "data/train.csv",
-        limit: int = 100000,
+        limit: int = 1000000,
         representation_key: RepresentationKey = "s_s_avg",
     ) -> None:
         super().__init__()
@@ -64,7 +64,9 @@ class ThermostabilityPregeneratedDataset(Dataset):
         with open(dsFilePath, newline="\n") as csvfile:
             spamreader = csv.reader(csvfile, delimiter=",", skipinitialspace=True)
             seq_thermos = [
-                (seq, thermo) for (i, (seq, thermo)) in enumerate(spamreader) if i != 0
+                (seq, float(thermo))
+                for (i, (seq, thermo)) in enumerate(spamreader)
+                if i != 0
             ]
 
             self.filename_thermo_seq = [
@@ -74,7 +76,8 @@ class ThermostabilityPregeneratedDataset(Dataset):
             ]
             diff = len(seq_thermos) - len(self.filename_thermo_seq)
             print(
-                f"Omitted {diff} sequences of {os.path.basename(dsFilePath)} because they have not been pregenerated"
+                f"""Omitted {diff} samples of {os.path.basename(dsFilePath)} because
+                 their sequences have not been pregenerated"""
             )
 
     def norm_distr(self):
@@ -89,4 +92,4 @@ class ThermostabilityPregeneratedDataset(Dataset):
         with open(os.path.join(self.representations_dir, filename), "rb") as f:
             s_s = torch.load(f)
 
-        return s_s, torch.tensor(float(thermo), dtype=torch.float32)
+        return s_s, torch.tensor(thermo, dtype=torch.float32)
