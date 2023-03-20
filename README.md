@@ -1,15 +1,21 @@
 # HotProt
 
-This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. 
-With our pretrained model we have achieved a mean absolute difference (MAD) of 3.77°C between actual and predicted melting points over our validation set. 
+This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. We also implemented the same using the ProtT5 model representations.
+With our pretrained model we have achieved a mean absolute difference (MAD) of 3.83°C and 3.49 between actual and predicted melting points over our test set for the ESMFold and ProtT5 embeddings respectively. 
 As there are multiple melting point measurements for many of the different proteins, a MAD of 0°C would not be possible. 
 In our validation set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.337`, which would consequently also be the MAD of a perfect model.
 
 ## Results
-These are the predictions of our pretrained model on the validation set. Reproduce this via `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg` (the results might be slightly different due to different model initialization).
+These are the predictions of our pretrained model on the validation set. Reproduce this for the ESMFold embeddings via `python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=summarizer --model_dropoutrate=0.5 --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --representation_key=s_s --summarizer_activation=identity --summarizer_mode=per_repr_position --summarizer_num_layers=1 --summarizer_out_size=1 --summarizer_type=average --val_on_trainset=false --wandb --early_stopping` (the results might be slightly different due to different model initialization).
+For the ProtT5 embeddings run `python3 applications/train.py --batch_size=32 --dataset=pregenerated --epochs=50 --learning_rate=0.000025 --loss=weighted_mse --model=fc --model_dropoutrate=0.2878908626017538 --model_first_hidden_units=1024 --model_hidden_layers=4 --optimizer=sgd --representation_key=prott5_avg --val_on_trainset=false --weight_regularizer=false`.
 
-![image](https://user-images.githubusercontent.com/29177177/219954806-affd41d0-305b-4081-8151-32e911050065.png)
-![image](https://user-images.githubusercontent.com/29177177/219954823-4dc1d414-830a-42ad-9d4e-7bce26ba10fd.png)
+See the predictions of the model trained with ESMFold embeddings on the test dataset.
+
+![image](assets/test_predictions_esm.png)
+
+See the prediction on the same dataset with our ProtT5 model below:
+
+![image](assets/test_predictions_prott5.png)
 
 
 
@@ -33,9 +39,10 @@ pip uninstall torch
 ```
 5. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
 ```sh
-pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116
 pip install fair-esm
 pip install fair-esm[esmfold]
+pip install pytorch-lightning==1.9.4
 pip install dllogger@git+https://github.com/NVIDIA/dllogger.git
 pip install openfold@git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307
 ```
@@ -62,13 +69,13 @@ For this all steps in **Setup** must have been executed successfuly.
 To run inference using our pretrained model, run [inference.ipynb](applications/inference.ipynb). You will be asked to input a protein sequence.
 ### Evaluation
 To evaluate an existing model, you can use our [`eval` script](applications/eval.py).
-E.g. `python applications/eval.py -m data/pretrained/model.pt` 
+E.g. `python applications/eval.py -m data/pretrained/prott5_avg/model.pt --representation_key=prott5_avg` 
 Note that the model file specified after `-m` must be a pytorch module that takes an input of size `(batch_size, 1024)` and provides an output of size `(batch_size, 1)`. 
 The results will be logged under `/results/eval`.
 ### Train
 #### Single training run
 To train a model with a hyperparameter specification, you can use our [`train` script](applications/train.py).
-E.g. `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7`
+E.g. `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.3`
 The results will be logged under `/results/train`.
 #### Hyperparameter search
 
