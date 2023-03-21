@@ -1,6 +1,5 @@
 from torch import nn
 import torch
-from esm_custom import esm
 from typing import List, Literal, Union
 import os
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
@@ -68,6 +67,8 @@ class HotInferModel(nn.Module):
                     repr = torch.load(
                         os.path.join(self.representations_dir, self.meta[seq])
                     )
+                    if type(repr) == list:
+                        repr = torch.stack(repr)
                 else:
                     repr = self.repr_model(
                         sequences=[seq], representation_key=self.representation_key

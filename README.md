@@ -1,20 +1,27 @@
 # HotProt
 
-This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. 
-With our pretrained model we have achieved a mean absolute difference (MAD) of 3.77°C between actual and predicted melting points over our test set. 
+This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. We also implemented the same using the ProtT5 model representations.
+With our pretrained model we have achieved a mean absolute difference (MAD) of 3.83°C and 3.49 between actual and predicted melting points over our test set for the ESMFold and ProtT5 embeddings respectively. 
 As there are multiple melting point measurements for many of the different proteins, a MAD of 0°C would not be possible. 
 In our test set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.262`, which would consequently also be the MAD of a perfect model.
 
 ## Results
-These are the predictions of our pretrained model on the test set. Reproduce this via `python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7 --representation_key=s_s_avg --early_stopping` (the results might be slightly different due to different model initialization).
+These are the predictions of our pretrained ESMFold model on the test set. 
 
-![image](https://user-images.githubusercontent.com/29177177/225330082-aa0a784a-e2b5-459b-b1f5-5213d84ed17e.png)
-![image](https://user-images.githubusercontent.com/29177177/225330226-247779bf-5bd3-4079-b393-e487c8f91c7c.png)
+![image](assets/test_predictions_esm.png)
 
-Predictions on Validation set:
+Reproduce this via 
 
-![val_predictions](https://user-images.githubusercontent.com/29177177/225331716-7c131750-1933-4abf-9b2d-fb1ae9e4af51.png)
+`python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=summarizer --model_dropoutrate=0.5 --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --representation_key=s_s --summarizer_activation=identity --summarizer_mode=per_repr_position --summarizer_num_layers=1 --summarizer_out_size=1 --summarizer_type=average --val_on_trainset=false --wandb --early_stopping` 
 
+(the results might be slightly different due to different model initialization). Make sure you have pregenerated the s_s representations for this. Only s_s_avg rerpresentations are included in the data.zip, because the file would be too large.
+
+See the prediction on the same dataset with our ProtT5 model below:
+![image](assets/test_predictions_prott5.png)
+
+This was achieved by running 
+
+`python3 applications/train.py --batch_size=32 --dataset=pregenerated --epochs=50 --learning_rate=0.000025 --loss=weighted_mse --model=fc --model_dropoutrate=0.2878908626017538 --model_first_hidden_units=1024 --model_hidden_layers=4 --optimizer=sgd --representation_key=prott5_avg --val_on_trainset=false --weight_regularizer=false`.
 
 
 ## Resouces
@@ -29,20 +36,7 @@ Predictions on Validation set:
 ## Setup
 These steps can be taken to setup the project on a linux machine.
 1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
-2. `conda env create -f environment.yml`
-3. `conda activate hotprot`
-4. Because the package `transformers` automatically installs a torch version that we don't want, we have to uninstall it first, so we can install ours.
-```sh
-pip uninstall torch
-```
-5. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
-```sh
-pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
-pip install fair-esm
-pip install fair-esm[esmfold]
-pip install dllogger@git+https://github.com/NVIDIA/dllogger.git
-pip install openfold@git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307
-```
+2. Run `./install_dependencies.sh`. You need to add the path to your conda.sh file in the script. Or follow the different steps manually. The package `transformers` automatically installs a torch version that we don't want. That is why we have to uninstall it first, so we can install ours. That is also done in the script.
 
 ### Imports
 - If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to `${workspaceFolder}`
@@ -57,7 +51,7 @@ We have prepared a ZIP archive containing
 - a pretrained model
 - ESM per protein representation for all sequences in our train/validation set with a length < 700
 
-1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/1Og0z3jpjerZmHzdNXBohAt5JP9zFPM3r/view?usp=share_link) and unzip the contents to the working directory (`unzip data.zip -d .`)
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
 2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook
 
 ## Applications
@@ -66,13 +60,13 @@ For this all steps in **Setup** must have been executed successfuly.
 To run inference using our pretrained model, run [inference.ipynb](applications/inference.ipynb). You will be asked to input a protein sequence.
 ### Evaluation
 To evaluate an existing model, you can use our [`eval` script](applications/eval.py).
-E.g. `python applications/eval.py -m data/pretrained/model.pt` 
+E.g. `python applications/eval.py -m data/pretrained/prott5_avg/model.pt --representation_key=prott5_avg` 
 Note that the model file specified after `-m` must be a pytorch module that takes an input of size `(batch_size, 1024)` and provides an output of size `(batch_size, 1)`. 
 The results will be logged under `/results/eval`.
 ### Train
 #### Single training run
 To train a model with a hyperparameter specification, you can use our [`train` script](applications/train.py).
-E.g. `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.7`
+E.g. `python3 applications/train.py --batch_size=32 --epochs=5 --learning_rate=0.001 --model=fc --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --val_on_trainset=false --model_dropoutrate=0.3`
 The results will be logged under `/results/train`.
 #### Hyperparameter search
 
