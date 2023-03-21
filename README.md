@@ -6,17 +6,21 @@ As there are multiple melting point measurements for many of the different prote
 In our validation set, the MAD of the melting point measurements difference to its proteins mean melting point is `1.337`, which would consequently also be the MAD of a perfect model.
 
 ## Results
-These are the predictions of our pretrained model on the validation set. Reproduce this for the ESMFold embeddings via `python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=summarizer --model_dropoutrate=0.5 --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --representation_key=s_s --summarizer_activation=identity --summarizer_mode=per_repr_position --summarizer_num_layers=1 --summarizer_out_size=1 --summarizer_type=average --val_on_trainset=false --wandb --early_stopping` (the results might be slightly different due to different model initialization).
-For the ProtT5 embeddings run `python3 applications/train.py --batch_size=32 --dataset=pregenerated --epochs=50 --learning_rate=0.000025 --loss=weighted_mse --model=fc --model_dropoutrate=0.2878908626017538 --model_first_hidden_units=1024 --model_hidden_layers=4 --optimizer=sgd --representation_key=prott5_avg --val_on_trainset=false --weight_regularizer=false`.
+These are the predictions of our pretrained model on the validation set. Reproduce this for the ESMFold embeddings via 
+
+`python3 applications/train.py --batch_size=32 --epochs=30 --learning_rate=0.001 --model=summarizer --model_dropoutrate=0.5 --model_first_hidden_units=1024 --model_hidden_layers=2 --optimizer=adam --representation_key=s_s --summarizer_activation=identity --summarizer_mode=per_repr_position --summarizer_num_layers=1 --summarizer_out_size=1 --summarizer_type=average --val_on_trainset=false --wandb --early_stopping` 
+
+(the results might be slightly different due to different model initialization). Make sure you have pregenerated the s_s representations for this. Only s_s_avg rerpresentations are included in the data.zip, because the file would be too large.
+
+For the ProtT5 embeddings run 
+
+`python3 applications/train.py --batch_size=32 --dataset=pregenerated --epochs=50 --learning_rate=0.000025 --loss=weighted_mse --model=fc --model_dropoutrate=0.2878908626017538 --model_first_hidden_units=1024 --model_hidden_layers=4 --optimizer=sgd --representation_key=prott5_avg --val_on_trainset=false --weight_regularizer=false`.
 
 See the predictions of the model trained with ESMFold embeddings on the test dataset.
-
 ![image](assets/test_predictions_esm.png)
 
 See the prediction on the same dataset with our ProtT5 model below:
-
 ![image](assets/test_predictions_prott5.png)
-
 
 
 ## Resouces
@@ -31,21 +35,7 @@ See the prediction on the same dataset with our ProtT5 model below:
 ## Setup
 These steps can be taken to setup the project on a linux machine.
 1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
-2. `conda env create -f environment.yml`
-3. `conda activate hotprot`
-4. Because the package `transformers` automatically installs a torch version that we don't want, we have to uninstall it first, so we can install ours.
-```sh
-pip uninstall torch
-```
-5. You then have to manually install openfold,torch and fair-esm, otherwise conda crashes
-```sh
-pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116
-pip install fair-esm
-pip install fair-esm[esmfold]
-pip install pytorch-lightning==1.9.4
-pip install dllogger@git+https://github.com/NVIDIA/dllogger.git
-pip install openfold@git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307
-```
+2. Run `./install_dependencies.sh`. You need to add the path to your conda.sh file in the script. Or follow the different steps manually. The package `transformers` automatically installs a torch version that we don't want. That is why we have to uninstall it first, so we can install ours. That is also done in the script.
 
 ### Imports
 - If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to `${workspaceFolder}`
@@ -60,7 +50,7 @@ We have prepared a ZIP archive containing
 - a pretrained model
 - ESM per protein representation for all sequences in our train/validation set with a length < 700
 
-1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/1Og0z3jpjerZmHzdNXBohAt5JP9zFPM3r/view?usp=share_link) and unzip the contents to the working directory (`unzip data.zip -d .`)
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
 2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook
 
 ## Applications
