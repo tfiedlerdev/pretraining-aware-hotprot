@@ -49,8 +49,9 @@ export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
 ### Data
 We have prepared a ZIP archive containing 
 - all data required for generating our train and validation sets 
-- a pretrained model
-- ESM per protein representation for all sequences in our train/validation set with a length < 700
+- a pretrained model for ESM and ProtT5 representations
+- ESM per protein representation for all sequences in our train/validation/test set with a length < 700
+- ProtT5 per protein representation for all sequences in our train/validation/test set with a length < 700
 
 1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
 2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook
