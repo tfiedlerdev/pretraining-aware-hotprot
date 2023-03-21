@@ -37,6 +37,7 @@ This was achieved by running
 These steps can be taken to setup the project on a linux machine.
 1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
 2. Run `./install_dependencies.sh`. You need to add the path to your conda.sh file in the script. Or follow the different steps manually. The package `transformers` automatically installs a torch version that we don't want. That is why we have to uninstall it first, so we can install ours. That is also done in the script.
+3. Activate conda enviroment with `conda activate hotprot`
 
 ### Imports
 - If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to `${workspaceFolder}`
