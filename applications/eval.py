@@ -57,6 +57,14 @@ if __name__ == "__main__":
         help='Representation key. Use "s_s" (per residue representation), "s_s_avg"(averaged s_s -> whole protein representation) for esm representations or "prott5_avg"(averaged prott5 embeddings)',
     )
 
+    parser.add_argument(
+        "--bin_width",
+        "-w",
+        type=int,
+        default=20,
+        help="Width of temperature ranges when evaluating performance with subsets",
+    )
+
     currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
     parser.add_argument(
         "--output_dir",
