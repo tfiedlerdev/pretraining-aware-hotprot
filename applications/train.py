@@ -23,7 +23,7 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerMultiInstance,
     RepresentationSummarizerAverage,
 )
-from util.weighted_mse import Weighted_MSE_Loss
+from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
 from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
@@ -100,16 +100,26 @@ def run_train_experiment(
     val_mean, val_var = eval_ds.norm_distr()
     test_mean, test_var = test_ds.norm_distr()
 
+    train_losses = {
+        "weighted_mse": WeightedMSELossMax(train_mean, train_var),
+        "scaled_mse": WeightedMSELossScaled(train_mean, train_var),
+        "mse": nn.MSELoss(),
+    }
+    eval_losses = {
+        "weighted_mse": WeightedMSELossMax(val_mean, val_var),
+        "scaled_mse": WeightedMSELossScaled(val_mean, val_var),
+        "mse": nn.MSELoss(),
+    }
+    test_losses = {
+        "weighted_mse": WeightedMSELossMax(test_mean, test_var),
+        "scaled_mse": WeightedMSELossScaled(test_mean, test_var),
+        "mse": nn.MSELoss(),
+    }
+
     criterions = {
-        "train": Weighted_MSE_Loss(train_mean, train_var)
-        if config["loss"] == "weighted_mse"
-        else nn.MSELoss(),
-        "val": Weighted_MSE_Loss(val_mean, val_var)
-        if config["loss"] == "weighted_mse"
-        else nn.MSELoss(),
-        "test": Weighted_MSE_Loss(test_mean, test_var)
-        if config["loss"] == "weighted_mse"
-        else nn.MSELoss(),
+        "train": train_losses[config["loss"]],
+        "val": eval_losses[config["loss"]],
+        "test": test_losses[config["loss"]],
     }
 
     summarizer = (
@@ -267,6 +277,8 @@ def run_train_experiment(
         test_metrics = calculate_metrics(test_predictions, test_actuals, "test")
         wandb.log(test_metrics)
 
+    print("storing experiment")
+
     if should_log:
         store_experiment(
             results_path,
@@ -285,6 +297,7 @@ def run_train_experiment(
             test_mad,
             test_predictions,
             test_actuals,
+            args=config,
         )
 
     return best_epoch_loss
@@ -331,7 +344,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--loss",
         type=str,
-        choices=["weighted_mse", "mse"],
+        choices=["weighted_mse", "mse", "scaled_mse"],
         default="mse",
     )
     parser.add_argument("--summarizer_num_layers", type=int, default=1)
@@ -341,6 +354,7 @@ if __name__ == "__main__":
         choices=["per_residue", "per_repr_position"],
         default="per_residue",
     )
+    parser.add_argument("--bin_width", type=int, default=20)
     args = parser.parse_args()
 
     argsDict = vars(args)

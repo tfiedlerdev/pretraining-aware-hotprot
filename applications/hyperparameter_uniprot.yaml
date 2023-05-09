@@ -1,12 +1,13 @@
 program: applications/train.py
 method: bayes
-name: new_model50
+name: mse_variations
 command:
   - ${env}
   - ${interpreter}
   - ${program}
   - ${args}
   - --wandb
+  - --early_stopping
 metric:
   name: loss
   goal: minimize
@@ -38,4 +39,4 @@ parameters:
   dataset:
     values: ["pregenerated"]
   loss:
-    values: ["weighted_mse", "mse"]
+    values: ["scaled_mse", "weighted_mse", "mse"]

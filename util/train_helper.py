@@ -2,6 +2,7 @@ import torch
 import time
 from torch import nn as nn
 from tqdm.notebook import tqdm
+import numpy as np
 import sys
 import wandb
 from typing import Callable
@@ -10,14 +11,64 @@ import pandas as pd
 from typing_extensions import TypedDict, Literal
 
 
-def calculate_metrics(predictions, labels, key: str):
+def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals):
+    subset_predictions = []
+    subset_actuals = []
+
+    for pred, actual in zip(epoch_predictions, epoch_actuals):
+        if min_temp <= actual and actual < max_temp:
+            subset_predictions.append(pred)
+            subset_actuals.append(actual)
+
+    diffs = np.array(
+        [abs(pred - actual) for pred, actual in zip(subset_predictions, subset_actuals)]
+    )
+    return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
+
+
+def evaluate_temp_bins(predictions, labels, bin_width, key: str):
+    np_preds = np.array(predictions)
+    np_actuals = np.array(labels)
+
+    metrics_per_class = {}
+
+    i = 0
+    while i * bin_width < np_actuals.max():
+        if (i + 1) * bin_width >= np_actuals.min():
+            class_label, diffs, subset_pred, subset_target = metrics_per_temp_range(
+                i * bin_width,
+                (i + 1) * bin_width,
+                np_preds,
+                np_actuals,
+            )
+            metrics_per_class[
+                f"{class_label}_best_epoch_spearman_r_s_{key}"
+            ] = spearmanr(subset_pred, subset_target).correlation
+            metrics_per_class[
+                f"{class_label}_best_epoch_max_abs_diff_{key}"
+            ] = diffs.max()
+            metrics_per_class[
+                f"{class_label}_best_epoch_median_abs_diff_{key}"
+            ] = np.median(diffs)
+            metrics_per_class[
+                f"{class_label}_best_epoch_mean_abs_diff_{key}"
+            ] = diffs.mean()
+
+        i = i + 1
+
+    return metrics_per_class
+
+
+def calculate_metrics(predictions, labels, key: str, temp_bin_width: int = 20):
     diffs = pd.Series([abs(pred - labels[i]) for (i, pred) in enumerate(predictions)])
-    return {
-        f"best_epoch_spearman_r_s_{key}": spearmanr(predictions, labels).correlation,
-        f"best_epoch_max_abs_diff_{key}": diffs.max(),
-        f"best_epoch_median_abs_diff_{key}": diffs.median(),
-        f"best_epoch_mean_abs_diff_{key}": diffs.mean(),
-    }
+    metrics = evaluate_temp_bins(predictions, labels, temp_bin_width, key)
+    metrics[f"best_epoch_spearman_r_s_{key}"] = spearmanr(
+        predictions, labels, nan_policy="raise"
+    ).correlation
+    metrics[f"best_epoch_max_abs_diff_{key}"] = diffs.max()
+    metrics[f"best_epoch_median_abs_diff_{key}"] = diffs.median()
+    metrics[f"best_epoch_mean_abs_diff_{key}"] = diffs.mean()
+    return metrics
 
 
 def execute_epoch(
