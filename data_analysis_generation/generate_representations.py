@@ -139,8 +139,10 @@ if __name__ == "__main__":
             "s_s_0_B",
             "esm_s_B_avg",
             "s_s_avg",
+            "s_s"
         ],
     )
+    parser.add_argument("--max_seq_len", type=int, default=700)
 
     args = vars(parser.parse_args())
 
@@ -154,7 +156,7 @@ if __name__ == "__main__":
     print(
         f"Representations of {len(already_created_seqs)} sequences of those already created"
     )
-    remaining_seqs = set(seqs).difference(already_created_seqs)
+    remaining_seqs = [seq for seq in set(seqs).difference(already_created_seqs) if len(seq) < args["max_seq_len"]]
 
     print(f"Creating remaining representations of {len(remaining_seqs)} sequences")
 
