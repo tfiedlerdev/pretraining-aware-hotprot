@@ -6,6 +6,7 @@ from torch.optim import lr_scheduler
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
+    k_max_sum_collate, k_max_var_collate
 )
 from thermostability.hotinfer import HotInferModel
 
@@ -13,7 +14,7 @@ from thermostability.hotinfer_pregenerated import (
     HotInferPregeneratedFC,
     HotInferPregeneratedSummarizerFC,
 )
-from thermostability.cnn_pregenerated import CNNPregeneratedFC
+from thermostability.cnn_pregenerated import CNNPregeneratedFC, CNNPregeneratedFullHeightFC
 from thermostability.thermo_dataset import ThermostabilityDataset
 import wandb
 import argparse
@@ -71,6 +72,19 @@ def run_train_experiment(
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset("data/test.csv", limit=limit)
     )
+    collate_fn = None
+    if representation_key == "s_s":
+        collate_fn_key = config["collate_fn"]
+        if collate_fn_key == "pad700":
+            collate_fn = zero_padding700_collate
+        else:
+            k = config["collate_k"]
+            if k==None:
+                raise Exception(f"For the selected collate function ({collate_fn_key}), you need to defined collate_k")
+            if collate_fn_key == "k_max_sum_pooling":
+                collate_fn = k_max_sum_collate(k)
+            elif collate_fn_key == "k_max_var_pooling":
+                collate_fn = k_max_var_collate(k)
 
     dataloaders = {
         "train": DataLoader(
@@ -78,21 +92,21 @@ def run_train_experiment(
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            collate_fn=collate_fn,
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            collate_fn=collate_fn,
         ),
         "test": DataLoader(
             test_ds,
             batch_size=config["batch_size"],
             shuffle=True,
             num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            collate_fn=collate_fn,
         ),
     }
 
@@ -156,7 +170,7 @@ def run_train_experiment(
         "s_s_0_A": 148 * 1024,
         "s_s_0_avg": 1024,
         "s_s_avg": 1024,
-        "s_s": 1024 * 700,
+        "s_s": 1024 * config["collate_k"],
     }
 
     input_size = input_sizes[representation_key]
@@ -174,7 +188,8 @@ def run_train_experiment(
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
         )
-        if config["model"] == "cnn"
+        if config["model"] == "cnn" else
+        CNNPregeneratedFullHeightFC() if config["model"] == "cnn_full_height"
         else HotInferPregeneratedSummarizerFC(
             p_dropout=config["model_dropoutrate"],
             summarizer=summarizer,
@@ -309,14 +324,14 @@ if __name__ == "__main__":
     parser.add_argument("--model_hidden_layers", type=int, default=1)
     parser.add_argument("--model_first_hidden_units", type=int, default=1024)
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"])
+    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"], default="false")
     parser.add_argument("--dataset_limit", type=int, default=1000000)
     parser.add_argument(
         "--optimizer", type=str, default="adam", choices=["adam", "sgd"]
     )
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument(
-        "--model", type=str, default="fc", choices=["fc", "cnn", "summarizer"]
+        "--model", type=str, default="fc", choices=["fc", "cnn", "summarizer", "cnn_full_height"]
     )
     parser.add_argument("--model_parallel", type=str, choices=["true", "false"])
     parser.add_argument("--wandb", action="store_true")
@@ -353,6 +368,17 @@ if __name__ == "__main__":
         type=str,
         choices=["per_residue", "per_repr_position"],
         default="per_residue",
+    )
+    parser.add_argument(
+        "--collate_fn",
+        type=str,
+        choices=["pad700", "k_max_sum_pooling", "k_max_var_pooling"],
+        default=None,
+    )
+    parser.add_argument(
+        "--collate_k",
+        type=int,
+        default=700,
     )
     parser.add_argument("--bin_width", type=int, default=20)
     args = parser.parse_args()
