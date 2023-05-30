@@ -1,6 +1,8 @@
 program: applications/train.py
 method: grid
-name: esm2_repr_summarizer_fix_overfit
+name: esm2_repr_k_max
+entity: hotprot
+project: hot-prot-applications
 command:
   - ${env}
   - ${interpreter}
@@ -25,20 +27,14 @@ parameters:
   optimizer:
     values: ["adam"]
   model:
-    values: ["summarizer"]
+    values: ["fc"]
   batch_size:
     values: [32]
   representation_key:
     values: ["s_s"]
-  summarizer_type: 
-    values: ["single_instance", "multi_instance", "average"]
-  summarizer_out_size:
-    values: [1]
-  summarizer_num_layers: 
-    values: [1]
   model_dropoutrate:
-    values: [0.5]
-  summarizer_activation: 
-    values: ["relu", "identity"]
-  summarizer_mode:
-    values: [ "per_residue", "per_repr_position"]
+    values: [0.2]
+  collate_fn:
+    values: ["k_max_sum_pooling", "k_max_var_pooling"]
+  collate_k:
+    values: [2,4,16,64,128]
