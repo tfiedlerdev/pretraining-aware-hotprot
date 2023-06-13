@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "datasets",
         choices=["test.csv", "train.csv", "val.csv"],
-        nargs='+',
+        nargs="+",
         default=[],
         help="Dataset. Can be one or multiple of test.csv, train.csv, val.csv",
     )
@@ -21,17 +21,9 @@ if __name__ == "__main__":
         print(f"Reading dataset {datasetName}")
         dsPath = f"./data/{datasetName}"
         with open(dsPath, "r") as f:
-            sequences = set([line.split(",")[0] for i, line in enumerate(f) if i!=0])
+            sequences = set([line.split(",")[0] for i, line in enumerate(f) if i != 0])
             allSequences = allSequences.union(sequences)
-        
+
     with open(args["output_file"], "w") as f:
         for seq in allSequences:
             f.write(f"{seq}\n")
-
-
-
-
-
-
-
-

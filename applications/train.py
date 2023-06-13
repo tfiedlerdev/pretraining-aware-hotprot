@@ -28,6 +28,7 @@ from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
 from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
+from thermostability.huggingface_esm import ESMForThermostability
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -173,7 +174,7 @@ def run_train_experiment(
         "s_s": 1024 * config["collate_k"],
     }
 
-    input_size = input_sizes[representation_key]
+    input_size = input_sizes.get(representation_key, None)
 
     thermo = (
         HotInferPregeneratedFC(
@@ -203,9 +204,9 @@ def run_train_experiment(
     )
 
     model = (
-        thermo
+        ESMForThermostability(regressor_layers=config["model_hidden_layers"], regressor_dropout=config["model_dropoutrate"], ) if config["model"]== "" else(thermo
         if not model_parallel
-        else HotInferModel(representation_key, thermo_module=thermo)
+        else HotInferModel(representation_key, thermo_module=thermo))
     )
     if not model_parallel:
         model = model.to("cuda:0")
@@ -331,7 +332,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument(
-        "--model", type=str, default="fc", choices=["fc", "cnn", "summarizer", "cnn_full_height"]
+        "--model", type=str, default="fc", choices=["fc", "cnn", "summarizer", "cnn_full_height", "huggingface_esm"]
     )
     parser.add_argument("--model_parallel", type=str, choices=["true", "false"])
     parser.add_argument("--wandb", action="store_true")
