@@ -6,6 +6,7 @@ from torch.optim import lr_scheduler
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
+    zero_padding_700
 )
 from thermostability.hotinfer import HotInferModel
 
@@ -23,10 +24,15 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerMultiInstance,
     RepresentationSummarizerAverage,
 )
+from thermostability.fst_hotinfer import FSTHotProt
 from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
-from util.train_helper import train_model, calculate_metrics
+from util.train_helper import train_model, calculate_metrics, get_dataset, get_collate_fn
 from datetime import datetime as dt
 from util.experiments import store_experiment
+from esm_custom.esm.esmfold.v1.pretrained import esmfold_v1
+from esm_custom.esm.esmfold.v1.esmfold import ESMFold
+from esm_custom.esm.sparse_multihead_attention import SparseMultiheadAttention
+from tqdm import tqdm
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,53 +52,33 @@ def run_train_experiment(
     model_parallel = config["model_parallel"] == "true"
     val_on_trainset = config["val_on_trainset"] == "true"
     limit = config["dataset_limit"]
-    train_ds = (
-        ThermostabilityPregeneratedDataset(
-            "data/train.csv", limit=limit, representation_key=representation_key
-        )
-        if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset("data/train.csv", limit=limit)
-    )
 
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
-
-    eval_ds = (
-        ThermostabilityPregeneratedDataset(
-            valFileName, limit=limit, representation_key=representation_key
-        )
-        if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset(valFileName, limit=limit)
-    )
-
-    test_ds = (
-        ThermostabilityPregeneratedDataset(
-            "data/test.csv", limit=limit, representation_key=representation_key
-        )
-        if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset("data/test.csv", limit=limit)
-    )
+    train_ds = get_dataset(config["dataset"], "data/train.csv", limit, representation_key)
+    eval_ds = get_dataset(config["dataset"], valFileName, limit, representation_key)
+    test_ds = get_dataset(config["dataset"], "data/test.csv", limit, representation_key)
 
     dataloaders = {
         "train": DataLoader(
             train_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=2,
+            collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=2,
+            collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
         "test": DataLoader(
             test_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=2,
+            collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
     }
 
@@ -194,6 +180,9 @@ def run_train_experiment(
     )
     if not model_parallel:
         model = model.to("cuda:0")
+        
+    if config["factorized_rank"] != 0:
+        model = FSTHotProt(model, zero_padding_700, config["factorized_rank"])
 
     if use_wandb:
         wandb.watch(thermo)
@@ -235,9 +224,7 @@ def run_train_experiment(
         use_wandb,
         num_epochs=config["epochs"],
         prepare_inputs=lambda x: x.to("cuda:0"),
-        prepare_labels=lambda x: x.to("cuda:0")
-        if not model_parallel
-        else x.to("cuda:1"),
+        prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
@@ -338,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["pregenerated", "end_to_end", "uni_prot"],
+        choices=["pregenerated", "end_to_end", "uni_prot", "fst"],
         default="pregenerated",
     )
     parser.add_argument(
@@ -355,6 +342,7 @@ if __name__ == "__main__":
         default="per_residue",
     )
     parser.add_argument("--bin_width", type=int, default=20)
+    parser.add_argument("--factorized_rank", type=int, default=4)
     args = parser.parse_args()
 
     argsDict = vars(args)

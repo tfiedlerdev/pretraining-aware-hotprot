@@ -36,7 +36,6 @@ def zero_padding_collate(
 def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     return zero_padding_collate(s_s_list, 700)
 
-
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 
 
@@ -45,13 +44,14 @@ class ThermostabilityPregeneratedDataset(Dataset):
         self,
         dsFilePath: str = "data/train.csv",
         limit: int = 1000000,
+        representation_filepath: str = "data",
         representation_key: RepresentationKey = "s_s_avg",
     ) -> None:
         super().__init__()
 
         if not os.path.exists(dsFilePath):
             raise Exception(f"{dsFilePath} does not exist.")
-        self.representations_dir = f"data/{representation_key}"
+        self.representations_dir = f"{representation_filepath}/{representation_key}"
         with open(f"{self.representations_dir}/sequences.csv", newline="\n") as csvfile:
             spamreader = csv.reader(csvfile, delimiter=",", skipinitialspace=True)
             self.sequenceToFilename = {

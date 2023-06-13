@@ -9,7 +9,11 @@ from typing import Callable
 from scipy.stats import spearmanr
 import pandas as pd
 from typing_extensions import TypedDict, Literal
+from torch.utils.data import Dataset
 
+from thermostability.fst_dataset import FSTDataset, zero_padding_fst
+from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset, zero_padding700_collate
+from thermostability.thermo_dataset import ThermostabilityDataset
 
 def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals):
     subset_predictions = []
@@ -25,6 +29,22 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
     )
     return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
 
+def get_dataset(ds_config: str, file_name: str, limit: int, representation_key: str) -> Dataset:
+    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key == "s_s" else "data"
+    if ds_config == "fst":
+        return FSTDataset(file_name, limit, dataset_location, representation_key)
+    elif ds_config == "pregenerated":
+        return ThermostabilityPregeneratedDataset(file_name, limit, dataset_location, representation_key)
+    else:
+        return ThermostabilityDataset(file_name, limit)
+    
+def get_collate_fn(ds_config: str, representation_key: str):
+    if ds_config == "fst":
+        return zero_padding_fst
+    elif representation_key == "s_s":
+        return zero_padding700_collate
+    else:
+        return None
 
 def evaluate_temp_bins(predictions, labels, bin_width, key: str):
     np_preds = np.array(predictions)
@@ -70,6 +90,51 @@ def calculate_metrics(predictions, labels, key: str, temp_bin_width: int = 20):
     metrics[f"best_epoch_mean_abs_diff_{key}"] = diffs.mean()
     return metrics
 
+def execute_epoch_fst(
+    model: nn.Module,
+    criterion: nn.modules.loss._Loss,
+    dataloader: torch.utils.data.DataLoader,
+    prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
+    prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
+    on_batch_done: Callable[
+        [int, torch.Tensor, float, float], None
+    ] = lambda idx, outputs, loss, running_mad: None,
+    optimizer: torch.optim.Optimizer = None,
+):
+    epoch_predictions = torch.tensor([])
+    epoch_actuals = torch.tensor([])
+    running_loss = 0.0
+    epoch_mad = 0.0
+    # Iterate over data.
+    for idx, (seqs, (inputs, labels)) in enumerate(dataloader):
+        inputs = prepare_inputs(inputs)
+        labels = prepare_labels(labels)
+        # zero the parameter gradients
+        if optimizer:
+            optimizer.zero_grad()
+        outputs = model((seqs, inputs))
+        loss = criterion(outputs, torch.unsqueeze(labels, 1))
+        epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
+        epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
+        # statistics
+        batch_loss = loss.item()
+
+        running_loss += batch_loss
+        mean_abs_diff = (
+            torch.abs(outputs.squeeze().sub(labels.squeeze())).squeeze().mean().item()
+        )
+        epoch_mad += mean_abs_diff
+        running_mad = epoch_mad / (idx + 1)
+        on_batch_done(idx, outputs, loss, running_mad)
+
+    epoch_mad = epoch_mad / len(dataloader)
+    epoch_loss = running_loss / len(dataloader)
+    return (
+        epoch_loss,
+        epoch_mad,
+        epoch_actuals.squeeze().tolist(),
+        epoch_predictions.squeeze().tolist(),
+    )
 
 def execute_epoch(
     model: nn.Module,
@@ -140,6 +205,7 @@ def train_model(
     num_epochs=25,
     best_model_path: str = None,
     max_gradient_clip: float = 10,
+    epoch_function: Callable = execute_epoch,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     should_stop: Callable[["list[float]"], bool] = lambda epoch_val_losses: False,
