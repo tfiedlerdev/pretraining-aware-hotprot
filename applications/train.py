@@ -26,7 +26,7 @@ from thermostability.repr_summarizer import (
 )
 from thermostability.fst_hotinfer import FSTHotProt
 from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
-from util.train_helper import train_model, calculate_metrics, get_dataset, get_collate_fn
+from util.train_helper import train_model, calculate_metrics, get_dataset, get_collate_fn, execute_epoch, execute_epoch_fst
 from datetime import datetime as dt
 from util.experiments import store_experiment
 from esm_custom.esm.esmfold.v1.pretrained import esmfold_v1
@@ -223,6 +223,7 @@ def run_train_experiment(
         dataloaders,
         use_wandb,
         num_epochs=config["epochs"],
+        epoch_function=execute_epoch_fst if config["dataset"] == "fst" else execute_epoch,
         prepare_inputs=lambda x: x.to("cuda:0"),
         prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,

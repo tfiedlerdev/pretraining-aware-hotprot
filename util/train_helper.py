@@ -258,7 +258,7 @@ def train_model(
             else:
                 model.eval()  # Set model to evaluate mode
             with torch.set_grad_enabled(phase == "train"):
-                epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = execute_epoch(
+                epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = epoch_function(
                     model,
                     criterions[phase],
                     dataloaders[phase],
@@ -307,7 +307,7 @@ def train_model(
 
     if dataloaders["test"]:
         print("Executing validation on test set...")
-        test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
+        test_loss, test_mad, test_actuals, test_predictions = epoch_function(
             model,
             criterions["test"],
             dataloaders["test"],
