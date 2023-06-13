@@ -258,7 +258,7 @@ def train_model(
             else:
                 model.eval()  # Set model to evaluate mode
             with torch.set_grad_enabled(phase == "train"):
-                epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = execute_epoch(
+                epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = epoch_function(
                     model,
                     criterions[phase],
                     dataloaders[phase],
