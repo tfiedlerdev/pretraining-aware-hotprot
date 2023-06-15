@@ -2,7 +2,6 @@ from torch import nn
 import torch
 from typing import List, Literal, Union
 import os
-from thermostability.hotinfer import RepresentationKeysComb
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
@@ -15,7 +14,18 @@ RepresentationKeysComb = Union[RepresentationKey, Literal["prott5_avg", "prott5"
 
 
 class CachedModel(nn.Module, ABC):
-    def __init__(self, representation_key: RepresentationKeysComb, caching=True):
+    def __init__(
+        self,
+        representation_key: RepresentationKeysComb,
+        caching=True,
+        enable_grad=False,
+    ):
+        super().__init__()
+        if caching:
+            assert (
+                enable_grad == False
+            ), "Enable grad can only be true if caching is disabled"
+        self.enable_grad = enable_grad
         self.representation_key = representation_key
         self.caching = caching
         self.representations_dir = f"../data/{representation_key}"
@@ -37,7 +47,7 @@ class CachedModel(nn.Module, ABC):
             self.meta = {}
 
     def get_cached_or_compute(self, sequences: List[str]):
-        with torch.no_grad():
+        with torch.set_grad_enabled(self.enable_grad):
             reprs = []
             for seq in sequences:
                 repr = None

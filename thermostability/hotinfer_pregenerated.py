@@ -9,21 +9,32 @@ def create_fc_layers(
     output_size: int,
     p_dropout: float,
     activation=nn.Identity,
+    use_layer_norm_before_first=False,
 ) -> nn.Module:
     if num == 1:
-        return nn.Sequential(nn.Linear(input_size, output_size), activation())
+        if not use_layer_norm_before_first:
+            return nn.Sequential(nn.Linear(input_size, output_size), activation())
+        else:
+            return nn.Sequential(
+                nn.LayerNorm(input_size),
+                nn.Linear(input_size, output_size),
+                activation(),
+            )
 
     result = []
+    id = lambda: str(len(result))
     for i in range(num - 1):
         _output_size = int(input_size / 2)
+        if i == 0 and use_layer_norm_before_first:
+            result.append((id(), nn.LayerNorm(input_size)))
         layer = nn.Linear(input_size, _output_size)
-        result.append((str(i * 3), layer))
-        result.append((str(i * 3 + 1), activation()))
-        result.append((str(i * 3 + 2), nn.Dropout(p=p_dropout)))
+        result.append((id(), layer))
+        result.append((id(), activation()))
+        result.append((id(), nn.Dropout(p=p_dropout)))
         input_size = _output_size
 
-    result.append((str((num - 1) * 3), nn.Linear(input_size, output_size)))
-    result.append((str((num - 1) * 3 + 1), activation()))
+    result.append((id(), nn.Linear(input_size, output_size)))
+    result.append((id(), activation()))
     return nn.Sequential(OrderedDict(result))
 
 
