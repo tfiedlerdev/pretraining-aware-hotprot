@@ -25,10 +25,10 @@ class CachedModel(nn.Module, ABC):
             assert (
                 enable_grad == False
             ), "Enable grad can only be true if caching is disabled"
-        self.enable_grad = enable_grad
+        self._enable_grad = enable_grad
         self.representation_key = representation_key
-        self.caching = caching
-        self.representations_dir = f"../data/{representation_key}"
+        self._caching = caching
+        self.representations_dir = f"./data/{representation_key}"
         os.makedirs(self.representations_dir, exist_ok=True)
         self.sequences_filepath = os.path.join(
             self.representations_dir, "sequences.csv"
@@ -47,7 +47,7 @@ class CachedModel(nn.Module, ABC):
             self.meta = {}
 
     def get_cached_or_compute(self, sequences: List[str]):
-        with torch.set_grad_enabled(self.enable_grad):
+        with torch.set_grad_enabled(self._enable_grad):
             reprs = []
             for seq in sequences:
                 repr = None
@@ -60,7 +60,7 @@ class CachedModel(nn.Module, ABC):
                 else:
                     repr = self.compute_representation(seq, self.representation_key)
 
-                    if self.caching:
+                    if self._caching:
                         cacheFileName = f"{len(self.meta.keys())+1}.pt"
 
                         with open(self.sequences_filepath, "a") as f:
