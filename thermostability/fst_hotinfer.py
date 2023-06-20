@@ -3,19 +3,21 @@ from tqdm import tqdm
 from torch.nn.modules import Module
 import torch.nn.utils.prune as prune
 from typing import Callable
-from esm_custom.esm.esmfold.v1.pretrained import esmfold_v1
-from esm_custom.esm.esmfold.v1.esmfold import ESMFold
+from esm_custom.esm.pretrained import load_model_and_alphabet_hub
 from esm_custom.esm.sparse_multihead_attention import SparseMultiheadAttention
+from esm_custom.esm.esmfold.v1.misc import (
+    batch_encode_sequences,
+    collate_dense_tensors,
+)
+from openfold.np import residue_constants
 
 class FSTHotProt(Module):
-    def __init__(self, hotprot_model, padding: Callable, factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
+    def __init__(self, hotprot_model, padding: Callable, esm2_version: str = "esm2_t33_650M_UR50D", factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
         super().__init__()
         self.hotinfer = hotprot_model
         self.padding = padding
-        esm_fold = esmfold_v1()
-        self.fst_esm = ESMFold(esmfold_config=esm_fold.cfg, use_sparse=True, rank=factorized_sparse_tuning_rank).to("cuda:0")
-        self.fst_esm.load_state_dict(esm_fold.state_dict(), strict=False)
-        del esm_fold
+        self.fst_esm, self.alphabet = load_model_and_alphabet_hub(esm2_version, True, factorized_sparse_tuning_rank)
+        self.fst_esm.to("cuda:0")
         
         for name, m in self.fst_esm.named_modules():
             if "adapter" in name or "sparse" in name:
@@ -74,13 +76,58 @@ class FSTHotProt(Module):
                 S_V = (S_V.abs() >= v).float()
                 prune.custom_from_mask(m.q_proj_sparse, 'weight', S_Q.to(m.q_proj.weight.device))
                 prune.custom_from_mask(m.v_proj_sparse, 'weight', S_V.to(m.v_proj.weight.device))
+     
+    def calculate_representations(self, sequences: "list[str]"):
+        aatype, mask, residx, linker_mask, chain_index = batch_encode_sequences(sequences)
+    
+        if not isinstance(residx, torch.Tensor):
+            residx = collate_dense_tensors(residx)
+            
+        aatype, mask, residx, linker_mask = map(
+            lambda x: x.to("cuda:0"), (aatype, mask, residx, linker_mask)
+        )
+
+        B = aatype.shape[0]
+        L = aatype.shape[1]
+        device = aatype.device
+
+        # === ESM ===
+        aatype = (aatype + 1).masked_fill(mask != 1, 0)
+        af2_to_esm = torch.tensor([self.alphabet.padding_idx] + [self.alphabet.get_idx(v) for v in residue_constants.restypes_with_x]).to("cuda:0")
+        esmaa = af2_to_esm[aatype]
+
+        batch_size = esmaa.size(0)
+        bosi, eosi = self.alphabet.cls_idx, self.alphabet.eos_idx
+        bos = esmaa.new_full((batch_size, 1), bosi)
+        eos = esmaa.new_full((batch_size, 1), self.alphabet.padding_idx)
+        esmaa = torch.cat([bos, esmaa, eos], dim=1)
+        # Use the first padding index as eos during inference.
+        esmaa[range(batch_size), (esmaa != 1).sum(1)] = eosi
+        
+        res = self.fst_esm(
+            esmaa,
+            repr_layers=range(self.fst_esm.num_layers + 1),
+            need_head_weights=False,
+        )
+        
+        esm_s = torch.stack([v for _, v in sorted(res["representations"].items())], dim=2)
+        esm_s = esm_s[:, 1:-1]
+        #fst_output = self.padding(esm_s)
+        fst_output = torch.mean(esm_s, dim=1)
+        return fst_output
+                
+    def dummy_run(self, sequence: str):
+        sequences = [sequence]
+        emb = self.calculate_representations(sequences)
+        print(emb.shape)
+        dummy_tensor = torch.rand_like(emb).to("cuda:0")
+        return self.hotinfer(torch.add(emb, dummy_tensor))
+        
                 
     def forward(self, input: "tuple[list[str], torch.Tensor]"):
         sequences, esm_embeddings = input
         
-        fst_embeddings = self.fst_esm.infer(sequences=sequences)["s_s"]
+        fst_output = self.calculate_representations(sequences)
 
-        fst_input = torch.stack([self.padding(emb) for emb in fst_embeddings])
-
-        return self.hotinfer(torch.add(fst_input, esm_embeddings))
+        return self.hotinfer(torch.add(fst_output, esm_embeddings))
         
