@@ -15,6 +15,7 @@ class FSTHotProt(Module):
         esm_fold = esmfold_v1()
         self.fst_esm = ESMFold(esmfold_config=esm_fold.cfg, use_sparse=True, rank=factorized_sparse_tuning_rank).to("cuda:0")
         self.fst_esm.load_state_dict(esm_fold.state_dict(), strict=False)
+        del esm_fold
         
         for name, m in self.fst_esm.named_modules():
             if "adapter" in name or "sparse" in name:
@@ -37,8 +38,7 @@ class FSTHotProt(Module):
                 S_V = torch.zeros_like(V_weight)
                 last_S_Q = torch.zeros_like(Q_weight)
 
-                # for rank in tqdm(range(20)):
-                for rank in tqdm(range(1)):
+                for rank in tqdm(range(20)):
                     S_Q = torch.zeros_like(Q_weight)
                     S_V = torch.zeros_like(Q_weight)
                     for _ in range(10):
@@ -78,15 +78,9 @@ class FSTHotProt(Module):
     def forward(self, input: "tuple[list[str], torch.Tensor]"):
         sequences, esm_embeddings = input
         
-        print(sequences)
-        print(esm_embeddings.shape, esm_embeddings.dtype)
-        
         fst_embeddings = self.fst_esm.infer(sequences=sequences)["s_s"]
 
         fst_input = torch.stack([self.padding(emb) for emb in fst_embeddings])
-
-        print(fst_input.shape, fst_input.dtype)
-        print(esm_embeddings.shape, esm_embeddings.dtype)
 
         return self.hotinfer(torch.add(fst_input, esm_embeddings))
         

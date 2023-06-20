@@ -6,7 +6,7 @@ from torch.optim import lr_scheduler
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
-    zero_padding_700
+    zero_padding_700,
 )
 from thermostability.hotinfer import HotInferModel
 
@@ -26,7 +26,14 @@ from thermostability.repr_summarizer import (
 )
 from thermostability.fst_hotinfer import FSTHotProt
 from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
-from util.train_helper import train_model, calculate_metrics, get_dataset, get_collate_fn, execute_epoch, execute_epoch_fst
+from util.train_helper import (
+    train_model,
+    calculate_metrics,
+    get_dataset,
+    get_collate_fn,
+    execute_epoch,
+    execute_epoch_fst,
+)
 from datetime import datetime as dt
 from util.experiments import store_experiment
 from esm_custom.esm.esmfold.v1.pretrained import esmfold_v1
@@ -54,7 +61,9 @@ def run_train_experiment(
     limit = config["dataset_limit"]
 
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
-    train_ds = get_dataset(config["dataset"], "data/train.csv", limit, representation_key)
+    train_ds = get_dataset(
+        config["dataset"], "data/train.csv", limit, representation_key
+    )
     eval_ds = get_dataset(config["dataset"], valFileName, limit, representation_key)
     test_ds = get_dataset(config["dataset"], "data/test.csv", limit, representation_key)
 
@@ -63,21 +72,21 @@ def run_train_experiment(
             train_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=2,
+            num_workers=1,
             collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=2,
+            num_workers=1,
             collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
         "test": DataLoader(
             test_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=2,
+            num_workers=1,
             collate_fn=get_collate_fn(config["dataset"], representation_key),
         ),
     }
@@ -180,7 +189,7 @@ def run_train_experiment(
     )
     if not model_parallel:
         model = model.to("cuda:0")
-        
+
     if config["factorized_rank"] != 0:
         model = FSTHotProt(model, zero_padding_700, config["factorized_rank"])
 
@@ -223,9 +232,13 @@ def run_train_experiment(
         dataloaders,
         use_wandb,
         num_epochs=config["epochs"],
-        epoch_function=execute_epoch_fst if config["dataset"] == "fst" else execute_epoch,
+        epoch_function=execute_epoch_fst
+        if config["dataset"] == "fst"
+        else execute_epoch,
         prepare_inputs=lambda x: x.to("cuda:0"),
-        prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
+        prepare_labels=lambda x: x.to("cuda:0")
+        if not model_parallel
+        else x.to("cuda:1"),
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
