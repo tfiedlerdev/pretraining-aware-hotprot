@@ -10,12 +10,12 @@ from esm_custom.esm.esmfold.v1.misc import (
     collate_dense_tensors,
 )
 from openfold.np import residue_constants
+from util.esm import preprocess_sequences
 
 class FSTHotProt(Module):
-    def __init__(self, hotprot_model, padding: Callable, esm2_version: str = "esm2_t33_650M_UR50D", factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
+    def __init__(self, hotprot_model, esm2_version: str = "esm2_t33_650M_UR50D", factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
         super().__init__()
         self.hotinfer = hotprot_model
-        self.padding = padding
         self.fst_esm, self.alphabet = load_model_and_alphabet_hub(esm2_version, True, factorized_sparse_tuning_rank)
         self.fst_esm.to("cuda:0")
         
@@ -78,31 +78,7 @@ class FSTHotProt(Module):
                 prune.custom_from_mask(m.v_proj_sparse, 'weight', S_V.to(m.v_proj.weight.device))
      
     def calculate_representations(self, sequences: "list[str]"):
-        aatype, mask, residx, linker_mask, chain_index = batch_encode_sequences(sequences)
-    
-        if not isinstance(residx, torch.Tensor):
-            residx = collate_dense_tensors(residx)
-            
-        aatype, mask, residx, linker_mask = map(
-            lambda x: x.to("cuda:0"), (aatype, mask, residx, linker_mask)
-        )
-
-        B = aatype.shape[0]
-        L = aatype.shape[1]
-        device = aatype.device
-
-        # === ESM ===
-        aatype = (aatype + 1).masked_fill(mask != 1, 0)
-        af2_to_esm = torch.tensor([self.alphabet.padding_idx] + [self.alphabet.get_idx(v) for v in residue_constants.restypes_with_x]).to("cuda:0")
-        esmaa = af2_to_esm[aatype]
-
-        batch_size = esmaa.size(0)
-        bosi, eosi = self.alphabet.cls_idx, self.alphabet.eos_idx
-        bos = esmaa.new_full((batch_size, 1), bosi)
-        eos = esmaa.new_full((batch_size, 1), self.alphabet.padding_idx)
-        esmaa = torch.cat([bos, esmaa, eos], dim=1)
-        # Use the first padding index as eos during inference.
-        esmaa[range(batch_size), (esmaa != 1).sum(1)] = eosi
+        esmaa = preprocess_sequences(sequences, self.alphabet)
         
         res = self.fst_esm(
             esmaa,
@@ -112,17 +88,14 @@ class FSTHotProt(Module):
         
         esm_s = torch.stack([v for _, v in sorted(res["representations"].items())], dim=2)
         esm_s = esm_s[:, 1:-1]
-        #fst_output = self.padding(esm_s)
         fst_output = torch.mean(esm_s, dim=1)
         return fst_output
                 
     def dummy_run(self, sequence: str):
         sequences = [sequence]
         emb = self.calculate_representations(sequences)
-        print(emb.shape)
         dummy_tensor = torch.rand_like(emb).to("cuda:0")
         return self.hotinfer(torch.add(emb, dummy_tensor))
-        
                 
     def forward(self, input: "tuple[list[str], torch.Tensor]"):
         sequences, esm_embeddings = input

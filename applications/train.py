@@ -191,7 +191,7 @@ def run_train_experiment(
         model = model.to("cuda:0")
 
     if config["factorized_rank"] != 0:
-        model = FSTHotProt(model, zero_padding_700, config["factorized_rank"])
+        model = FSTHotProt(model, factorized_sparse_tuning_rank=config["factorized_rank"])
 
     if use_wandb:
         wandb.watch(thermo)

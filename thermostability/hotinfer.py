@@ -7,7 +7,7 @@ from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 import csv
 from util.prot_t5 import ProtT5Embeddings
-from util.esm import ESMEmbeddings
+from util.esmfold import ESMFoldEmbeddings
 
 RepresentationKeysComb = Union[RepresentationKey, Literal["prott5_avg", "prott5"]]
 
@@ -28,7 +28,7 @@ class HotInferModel(nn.Module):
         self.repr_model = (
             ProtT5Embeddings(device="cuda:0")
             if representation_key == "prott5_avg"
-            else ESMEmbeddings(device="cuda:0")
+            else ESMFoldEmbeddings(device="cuda:0")
         )
 
         self.thermo_module = thermo_module

@@ -7,8 +7,9 @@ import csv
 from datetime import datetime
 from typing import Optional
 from util.telegram import TelegramBot
-from util.esm import ESMEmbeddings
+from util.esmfold import ESMFoldEmbeddings
 from util.prot_t5 import ProtT5Embeddings
+from util.esm import ESMEmbeddings
 import traceback
 from thermostability.hotinfer import RepresentationKeysComb
 
@@ -67,9 +68,13 @@ def generate_representations(
         print(f"At batch {index}/{numBatches}")
         with torch.no_grad():
             print("Predicting")
-            embedding_generator = (
-                ESMEmbeddings() if model == "esm" else ProtT5Embeddings()
-            )
+            if model == "esm":
+                embedding_generator = ESMFoldEmbeddings()
+            elif model == "protT5":
+                embedding_generator = ProtT5Embeddings()
+            else:
+                embedding_generator = ESMEmbeddings(model)
+                
             emb = embedding_generator(sequences=inputs, representation_key=repr_key)
             batchesPredicted += 1
             with open(labels_file, "a") as csv:
@@ -124,7 +129,7 @@ if __name__ == "__main__":
         "output_dir", type=str, help="Directory in which to place the representations"
     )
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--model", type=str, default="esm", choices=["esm", "protT5"])
+    parser.add_argument("--model", type=str, default="esm")
     parser.add_argument("--telegram", action="store_true", default=False)
     parser.add_argument(
         "--repr_key",
