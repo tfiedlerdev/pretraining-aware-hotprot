@@ -1,6 +1,6 @@
 program: applications/train.py
 method: grid
-name: hugg_esm8M
+name: hugg_esm35M
 entity: hotprot
 project: hot-prot-applications
 command:
@@ -37,9 +37,9 @@ parameters:
   bin_width:
     values: [-1]
   hugg_esm_size:
-    values: ["8M"]
+    values: ["35M"]
   hugg_esm_freeze:
-    values: ["true", "false"]
+    values: ["false"]
   hugg_esm_layer_norm:
     values: ["true", "false"]
   dataset:
