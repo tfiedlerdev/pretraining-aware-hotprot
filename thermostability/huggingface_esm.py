@@ -44,7 +44,9 @@ class ESMForThermostability(CachedModel):
         freeze_esm: bool = True,
         model_size: ESMSizes = "8M",
     ):
-        super().__init__("start_token", caching=freeze_esm, enable_grad=not freeze_esm)
+        super().__init__(
+            f"start_token_{model_size}", caching=freeze_esm, enable_grad=not freeze_esm
+        )
         assert (
             model_size in model_names
         ), f"Invalid ESM2 model size: {model_size}. Must be in {model_names.keys()} "
@@ -70,19 +72,14 @@ class ESMForThermostability(CachedModel):
         return self.esm
 
     def forward(self, sequences: "list[str]"):
-        esm = self._get_esm()
-        input_ids = self.tokenizer(
-            sequences, padding=True, truncation=True, return_tensors="pt"
-        ).input_ids.to("cuda:0")
-        outputs = esm(input_ids.to("cuda:0"))
-        last_hidden_state = outputs.last_hidden_state
-        return self.regression(last_hidden_state[:, 0, :])
+        batch_bos_token_embeddings = self.get_cached_or_compute(sequences)
+        return self.regression(batch_bos_token_embeddings)
 
     def compute_representation(self, seq: str, _: RepresentationKeysComb):
         esm = self._get_esm()
         input_ids = self.tokenizer(
             [seq], padding=True, truncation=True, return_tensors="pt"
-        ).to("cuda:0")
+        ).input_ids.to("cuda:0")
 
         outputs = esm(input_ids)
         last_hidden_state = outputs.last_hidden_state
