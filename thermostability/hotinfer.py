@@ -21,15 +21,27 @@ class CachedModel(nn.Module, ABC):
         enable_grad=False,
     ):
         super().__init__()
+        assert (
+            type(caching) == bool
+        ), f"Caching must be a boolean but is {type(caching)}"
         if caching:
             assert (
                 enable_grad == False
             ), "Enable grad can only be true if caching is disabled"
+
+        print(
+            "Initializing CachedModel with caching: ",
+            caching,
+            " and enable_grad: ",
+            enable_grad,
+        )
         self._enable_grad = enable_grad
         self.representation_key = representation_key
         self._caching = caching
         self.representations_dir = f"./data/{representation_key}"
-        os.makedirs(self.representations_dir, exist_ok=True)
+
+        if caching:
+            os.makedirs(self.representations_dir, exist_ok=True)
         self.sequences_filepath = os.path.join(
             self.representations_dir, "sequences.csv"
         )
@@ -62,7 +74,6 @@ class CachedModel(nn.Module, ABC):
 
                     if self._caching:
                         cacheFileName = f"{len(self.meta.keys())+1}.pt"
-
                         with open(self.sequences_filepath, "a") as f:
                             torch.save(
                                 repr,

@@ -41,7 +41,7 @@ class ESMForThermostability(CachedModel):
         regressor_dropout: float = 0.3,
         regressor_activation: nn.Module = nn.LeakyReLU,
         regressor_layer_norm: bool = True,
-        freeze_esm: bool = True,
+        freeze_esm: bool = False,
         model_size: ESMSizes = "8M",
     ):
         super().__init__(
@@ -76,6 +76,9 @@ class ESMForThermostability(CachedModel):
         return self.regression(batch_bos_token_embeddings)
 
     def compute_representation(self, seq: str, _: RepresentationKeysComb):
+        assert (
+            torch.is_grad_enabled() == self._enable_grad
+        ), f"Grad enabled state does not match for esm bos token embeddings computation (required: {self._enable_grad}, actual: {torch.is_grad_enabled()})"
         esm = self._get_esm()
         input_ids = self.tokenizer(
             [seq], padding=True, truncation=True, return_tensors="pt"

@@ -425,12 +425,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hugg_esm_freeze",
         type=str_to_bool,
-        default=None,
+        default="None",
     )
     parser.add_argument(
         "--hugg_esm_layer_norm",
         type=str_to_bool,
-        default=None,
+        default="None",
     )
     args = parser.parse_args()
 
@@ -447,7 +447,7 @@ if __name__ == "__main__":
     if use_wandb:
         with wandb.init(config=argsDict):
             run_train_experiment(
-                config=wandb.config,
+                config=argsDict,
                 use_wandb=True,
                 results_path=results_path,
                 should_log=should_log,
