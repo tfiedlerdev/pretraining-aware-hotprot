@@ -26,3 +26,4 @@ runs
 g++
 gcc
 *.out
+config.yaml
