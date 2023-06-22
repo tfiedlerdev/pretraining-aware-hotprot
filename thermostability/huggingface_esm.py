@@ -75,13 +75,13 @@ class ESMForThermostability(CachedModel):
         batch_bos_token_embeddings = self.get_cached_or_compute(sequences)
         return self.regression(batch_bos_token_embeddings)
 
-    def compute_representation(self, seq: str, _: RepresentationKeysComb):
+    def compute_representations(self, seqs: "list[str]", _: RepresentationKeysComb):
         assert (
             torch.is_grad_enabled() == self._enable_grad
         ), f"Grad enabled state does not match for esm bos token embeddings computation (required: {self._enable_grad}, actual: {torch.is_grad_enabled()})"
         esm = self._get_esm()
         input_ids = self.tokenizer(
-            [seq], padding=True, truncation=True, return_tensors="pt"
+            seqs, padding=True, truncation=True, return_tensors="pt"
         ).input_ids.to("cuda:0")
 
         outputs = esm(input_ids)

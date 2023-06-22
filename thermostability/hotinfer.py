@@ -58,21 +58,22 @@ class CachedModel(nn.Module, ABC):
         else:
             self.meta = {}
 
-    def get_cached_or_compute(self, sequences: List[str]):
+    def get_cached_or_compute(self, sequences: "list[str]"):
         with torch.set_grad_enabled(self._enable_grad):
-            reprs = []
-            for seq in sequences:
-                repr = None
-                if seq in self.meta:
-                    repr = torch.load(
-                        os.path.join(self.representations_dir, self.meta[seq])
-                    )
-                    if type(repr) == list:
-                        repr = torch.stack(repr)
-                else:
-                    repr = self.compute_representation(seq, self.representation_key)
-
-                    if self._caching:
+            if self._caching:
+                reprs = []
+                for seq in sequences:
+                    repr = None
+                    if seq in self.meta:
+                        repr = torch.load(
+                            os.path.join(self.representations_dir, self.meta[seq])
+                        )
+                        if type(repr) == list:
+                            repr = torch.stack(repr)
+                    else:
+                        repr = self.compute_representations(
+                            [seq], self.representation_key
+                        )
                         cacheFileName = f"{len(self.meta.keys())+1}.pt"
                         with open(self.sequences_filepath, "a") as f:
                             torch.save(
@@ -81,18 +82,19 @@ class CachedModel(nn.Module, ABC):
                             )
                             f.write(f"{seq}, {cacheFileName}\n")
                             self.meta[seq] = cacheFileName
+                    reprs.append(self.prepare_repr_before_collate(repr))
+                reprBatch = torch.stack(reprs)
+                return reprBatch
 
-                reprs.append(self.prepare_repr_before_collate(repr))
-            reprBatch = torch.stack(reprs)
-        return reprBatch
+            return self.compute_representations(sequences, self.representation_key)
 
     def prepare_repr_before_collate(self, repr: torch.Tensor):
         return repr
 
     @abstractmethod
-    def compute_representation(
+    def compute_representations(
         self, seq: str, representation_key: RepresentationKeysComb
-    ):
+    ) -> torch.Tensor:
         pass
 
 
@@ -129,10 +131,10 @@ class HotInferModel(CachedModel):
 
         return self.thermo_module(reprBatch)
 
-    def compute_representation(
-        self, seq: str, representation_key: RepresentationKeysComb
+    def compute_representations(
+        self, seqs: "list[str]", representation_key: RepresentationKeysComb
     ):
-        return self.repr_model(sequences=[seq], representation_key=representation_key)
+        return self.repr_model(sequences=seqs, representation_key=representation_key)
 
     def prepare_repr_before_collate(self, repr: torch.Tensor):
         return zero_padding_700(repr) if self.pad_representations else repr
