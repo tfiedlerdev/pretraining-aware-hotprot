@@ -238,7 +238,7 @@ def train_model(
 
     # load best model weights
     if best_model_path:
-        model = torch.load(best_model_path)
+        model = torch.load(best_model_path, map_location={"cpu": "cuda:0"})
 
     if dataloaders["test"]:
         print("Executing validation on test set...")
