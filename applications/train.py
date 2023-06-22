@@ -36,6 +36,7 @@ from thermostability.huggingface_esm import (
     ESMForThermostability,
     model_names as esm2_model_names,
 )
+from util.yaml_config import YamlConfig
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -445,6 +446,8 @@ if __name__ == "__main__":
     results_path = f"results/train/{representation_key}/{currentTime}"
 
     if use_wandb:
+        yamlConfig = YamlConfig()
+        wandb.login(key=yamlConfig["WandBApiKey"])
         with wandb.init(config=argsDict):
             run_train_experiment(
                 config=argsDict,
