@@ -244,7 +244,7 @@ def run_train_experiment(
     if use_wandb:
         wandb.watch(model)
 
-    weight_decay = 1e-5 if config["weight_regularizer"] else 0
+    weight_decay = config["weight_regularizer"]
     optimizer_ft = (
         torch.optim.Adam(
             model.parameters(), lr=config["learning_rate"], weight_decay=weight_decay
@@ -326,7 +326,7 @@ def run_train_experiment(
     print("storing experiment")
 
     if should_log:
-        store_experiment(
+        val_cm = store_experiment(
             results_path,
             "val",
             best_epoch_loss,
@@ -336,7 +336,7 @@ def run_train_experiment(
             config,
             epoch_mads,
         )
-        store_experiment(
+        test_cm = store_experiment(
             results_path,
             "test",
             test_epoch_loss,
@@ -345,6 +345,11 @@ def run_train_experiment(
             test_actuals,
             args=config,
         )
+        if use_wandb:
+            artifact = wandb.Artifact("confusion_matrix", type="confusion_matrix")
+            artifact.add_file(val_cm, name="val")
+            artifact.add_file(test_cm, name="test")
+            wandb.log_artifact(artifact)
 
     return best_epoch_loss
 
@@ -373,7 +378,7 @@ if __name__ == "__main__":
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--representation_key", type=str, default="s_s_avg")
     parser.add_argument("--model_dropoutrate", type=float, default=0.3)
-    parser.add_argument("--weight_regularizer", type=bool, default=True)
+    parser.add_argument("--weight_regularizer", type=float, default=0.0)
     parser.add_argument("--seq_length", type=int, default=700)
     parser.add_argument("--nolog", action="store_true")
     parser.add_argument("--early_stopping", action="store_true", default=False)
@@ -430,6 +435,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--hugg_esm_layer_norm",
+        type=str_to_bool,
+        default="None",
+    )
+    parser.add_argument(
+        "--hugg_esm_batch_norm",
         type=str_to_bool,
         default="None",
     )
