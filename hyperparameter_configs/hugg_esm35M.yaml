@@ -35,7 +35,7 @@ parameters:
   summarizer_num_layers:
     values: [-1]
   bin_width:
-    values: [-1]
+    values: [5]
   hugg_esm_size:
     values: ["35M"]
   hugg_esm_freeze:

@@ -27,7 +27,7 @@ parameters:
   representation_key:
     values: ["None"]
   model_dropoutrate:
-    values: [0.2]
+    values: [0.25]
   collate_k:
     values: [-1]
   summarizer_out_size:
@@ -41,7 +41,7 @@ parameters:
   hugg_esm_freeze:
     values: ["false"]
   hugg_esm_layer_norm:
-    values: ["true"]
+    values: ["false"]
   dataset:
     values: ["end_to_end"]
   seq_length:
@@ -49,4 +49,4 @@ parameters:
   weight_regularizer:
     values: [0.001]
   hugg_esm_batch_norm:
-    values: ["true"]
+    values: ["true", "false"]

@@ -50,7 +50,7 @@ class ESMForThermostability(CachedModel):
         )
         assert (
             model_size in model_names
-        ), f"Invalid ESM2 model size: {model_size}. Must be in {model_names.keys()} "
+        ), f"Invalid ESM2 model size (--hugg_esm_size): {model_size}. Must be in {model_names.keys()} "
 
         print("Loading ESM model with batch norm:", use_batch_norm)
         self.model_size = model_size

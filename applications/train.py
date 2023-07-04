@@ -346,10 +346,7 @@ def run_train_experiment(
             args=config,
         )
         if use_wandb:
-            artifact = wandb.Artifact("confusion_matrix", type="confusion_matrix")
-            artifact.add_file(val_cm, name="val")
-            artifact.add_file(test_cm, name="test")
-            wandb.log_artifact(artifact)
+            wandb.log({"val_cm": wandb.Image(val_cm), "test_cm": wandb.Image(test_cm)})
 
     return best_epoch_loss
 
