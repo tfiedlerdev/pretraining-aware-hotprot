@@ -32,7 +32,7 @@ class ThermostabilityDataset(Dataset):
             ]
 
     def norm_distr(self):
-        temps = [thermo for (seq, thermo) in self.seq_thermos]
+        temps = [float(thermo) for (seq, thermo) in self.seq_thermos]
         return calc_norm(temps)
 
     def __len__(self):

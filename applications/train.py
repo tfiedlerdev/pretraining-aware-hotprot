@@ -6,6 +6,8 @@ from torch.optim import lr_scheduler
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
     zero_padding700_collate,
+    k_max_sum_collate,
+    k_max_var_collate,
 )
 from thermostability.hotinfer import HotInferModel
 
@@ -13,7 +15,10 @@ from thermostability.hotinfer_pregenerated import (
     HotInferPregeneratedFC,
     HotInferPregeneratedSummarizerFC,
 )
-from thermostability.cnn_pregenerated import CNNPregeneratedFC
+from thermostability.cnn_pregenerated import (
+    CNNPregeneratedFC,
+    CNNPregeneratedFullHeightFC,
+)
 from thermostability.thermo_dataset import ThermostabilityDataset
 import wandb
 import argparse
@@ -27,6 +32,11 @@ from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
 from util.train_helper import train_model, calculate_metrics
 from datetime import datetime as dt
 from util.experiments import store_experiment
+from thermostability.huggingface_esm import (
+    ESMForThermostability,
+    model_names as esm2_model_names,
+)
+from util.yaml_config import YamlConfig
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -37,6 +47,17 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
+
+
+def str_to_bool(value):
+    if value.lower() in ["true", "t"]:
+        return True
+    elif value.lower() in ["false", "f"]:
+        return False
+    elif value.lower() in ["none", "n"]:
+        return None
+    else:
+        raise argparse.ArgumentTypeError("Invalid boolean value: {}".format(value))
 
 
 def run_train_experiment(
@@ -51,7 +72,9 @@ def run_train_experiment(
             "data/train.csv", limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset("data/train.csv", limit=limit)
+        else ThermostabilityDataset(
+            "data/train.csv", limit=limit, max_seq_len=config["seq_length"]
+        )
     )
 
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
@@ -71,28 +94,43 @@ def run_train_experiment(
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset("data/test.csv", limit=limit)
     )
+    collate_fn = None
+    if representation_key == "s_s":
+        collate_fn_key = config["collate_fn"]
+        if collate_fn_key == "pad700":
+            collate_fn = zero_padding700_collate
+        else:
+            k = config["collate_k"]
+            if k == None:
+                raise Exception(
+                    f"For the selected collate function ({collate_fn_key}), you need to defined collate_k"
+                )
+            if collate_fn_key == "k_max_sum_pooling":
+                collate_fn = k_max_sum_collate(k)
+            elif collate_fn_key == "k_max_var_pooling":
+                collate_fn = k_max_var_collate(k)
 
     dataloaders = {
         "train": DataLoader(
             train_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=1,
+            collate_fn=collate_fn,
         ),
         "val": DataLoader(
             eval_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=1,
+            collate_fn=collate_fn,
         ),
         "test": DataLoader(
             test_ds,
             batch_size=config["batch_size"],
             shuffle=True,
-            num_workers=4,
-            collate_fn=zero_padding700_collate if representation_key == "s_s" else None,
+            num_workers=1,
+            collate_fn=collate_fn,
         ),
     }
 
@@ -156,10 +194,10 @@ def run_train_experiment(
         "s_s_0_A": 148 * 1024,
         "s_s_0_avg": 1024,
         "s_s_avg": 1024,
-        "s_s": 1024 * 700,
+        "s_s": 1024 * config["collate_k"],
     }
 
-    input_size = input_sizes[representation_key]
+    input_size = input_sizes.get(representation_key, None)
 
     thermo = (
         HotInferPregeneratedFC(
@@ -175,6 +213,8 @@ def run_train_experiment(
             first_hidden_size=config["model_first_hidden_units"],
         )
         if config["model"] == "cnn"
+        else CNNPregeneratedFullHeightFC()
+        if config["model"] == "cnn_full_height"
         else HotInferPregeneratedSummarizerFC(
             p_dropout=config["model_dropoutrate"],
             summarizer=summarizer,
@@ -185,27 +225,33 @@ def run_train_experiment(
                 p_dropout=config["model_dropoutrate"],
             ),
         )
+        if config["model"] == "summarizer"
+        else None
     )
 
     model = (
-        thermo
-        if not model_parallel
-        else HotInferModel(representation_key, thermo_module=thermo)
+        ESMForThermostability.from_config(config)
+        if config["model"] == "hugg_esm"
+        else (
+            thermo
+            if not model_parallel
+            else HotInferModel(representation_key, thermo_module=thermo)
+        )
     )
     if not model_parallel:
         model = model.to("cuda:0")
 
     if use_wandb:
-        wandb.watch(thermo)
+        wandb.watch(model)
 
     weight_decay = 1e-5 if config["weight_regularizer"] else 0
     optimizer_ft = (
         torch.optim.Adam(
-            thermo.parameters(), lr=config["learning_rate"], weight_decay=weight_decay
+            model.parameters(), lr=config["learning_rate"], weight_decay=weight_decay
         )
         if config["optimizer"] == "adam"
         else torch.optim.SGD(
-            thermo.parameters(),
+            model.parameters(),
             lr=config["learning_rate"],
             momentum=0.9,
             weight_decay=weight_decay,
@@ -234,7 +280,7 @@ def run_train_experiment(
         dataloaders,
         use_wandb,
         num_epochs=config["epochs"],
-        prepare_inputs=lambda x: x.to("cuda:0"),
+        prepare_inputs=lambda x: x.to("cuda:0") if torch.is_tensor(x) else x,
         prepare_labels=lambda x: x.to("cuda:0")
         if not model_parallel
         else x.to("cuda:1"),
@@ -309,14 +355,19 @@ if __name__ == "__main__":
     parser.add_argument("--model_hidden_layers", type=int, default=1)
     parser.add_argument("--model_first_hidden_units", type=int, default=1024)
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"])
+    parser.add_argument(
+        "--val_on_trainset", type=str, choices=["true", "false"], default="false"
+    )
     parser.add_argument("--dataset_limit", type=int, default=1000000)
     parser.add_argument(
         "--optimizer", type=str, default="adam", choices=["adam", "sgd"]
     )
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument(
-        "--model", type=str, default="fc", choices=["fc", "cnn", "summarizer"]
+        "--model",
+        type=str,
+        default="fc",
+        choices=["fc", "cnn", "summarizer", "cnn_full_height", "hugg_esm"],
     )
     parser.add_argument("--model_parallel", type=str, choices=["true", "false"])
     parser.add_argument("--wandb", action="store_true")
@@ -354,7 +405,34 @@ if __name__ == "__main__":
         choices=["per_residue", "per_repr_position"],
         default="per_residue",
     )
+    parser.add_argument(
+        "--collate_fn",
+        type=str,
+        choices=["pad700", "k_max_sum_pooling", "k_max_var_pooling"],
+        default=None,
+    )
+    parser.add_argument(
+        "--collate_k",
+        type=int,
+        default=700,
+    )
     parser.add_argument("--bin_width", type=int, default=20)
+    parser.add_argument(
+        "--hugg_esm_size",
+        type=str,
+        choices=esm2_model_names.keys(),
+        default=None,
+    )
+    parser.add_argument(
+        "--hugg_esm_freeze",
+        type=str_to_bool,
+        default="None",
+    )
+    parser.add_argument(
+        "--hugg_esm_layer_norm",
+        type=str_to_bool,
+        default="None",
+    )
     args = parser.parse_args()
 
     argsDict = vars(args)
@@ -368,9 +446,11 @@ if __name__ == "__main__":
     results_path = f"results/train/{representation_key}/{currentTime}"
 
     if use_wandb:
+        yamlConfig = YamlConfig()
+        wandb.login(key=yamlConfig["WandBApiKey"])
         with wandb.init(config=argsDict):
             run_train_experiment(
-                config=wandb.config,
+                config=argsDict,
                 use_wandb=True,
                 results_path=results_path,
                 should_log=should_log,

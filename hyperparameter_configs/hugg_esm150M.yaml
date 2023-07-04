@@ -1,0 +1,48 @@
+program: applications/train.py
+method: grid
+name: hugg_esm150M
+entity: hotprot
+project: hot-prot-applications
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --wandb
+  - --early_stopping
+metric:
+  name: loss
+  goal: minimize
+parameters:
+  learning_rate:
+    values: [0.01]
+  model_hidden_layers:
+    values: [2]
+  epochs:
+    values: [30]
+  model:
+    values: ["hugg_esm"]
+  batch_size:
+    values: [8]
+  representation_key:
+    values: ["None"]
+  model_dropoutrate:
+    values: [0.2]
+  collate_k:
+    values: [-1]
+  summarizer_out_size:
+    values: [-1]
+  summarizer_num_layers:
+    values: [-1]
+  bin_width:
+    values: [-1]
+  hugg_esm_size:
+    values: ["150M"]
+  hugg_esm_freeze:
+    values: ["false"]
+  hugg_esm_layer_norm:
+    values: ["true", "false"]
+  dataset:
+    values: ["end_to_end"]
+  seq_length:
+    values: [3000]

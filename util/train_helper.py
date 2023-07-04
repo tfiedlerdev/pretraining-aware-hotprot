@@ -93,13 +93,14 @@ def execute_epoch(
         # zero the parameter gradients
         if optimizer:
             optimizer.zero_grad()
+
         outputs = model(inputs)
         loss = criterion(outputs, torch.unsqueeze(labels, 1))
+
         epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
         # statistics
         batch_loss = loss.item()
-
         running_loss += batch_loss
         mean_abs_diff = (
             torch.abs(outputs.squeeze().sub(labels.squeeze())).squeeze().mean().item()
@@ -233,23 +234,24 @@ def train_model(
 
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
-    print(f"Best val Acc: {best_epoch_loss:4f}")
+    print(f"Best val epoch loss: {best_epoch_loss:4f}")
 
     # load best model weights
     if best_model_path:
-        model = torch.load(best_model_path)
+        model = torch.load(best_model_path, map_location={"cpu": "cuda:0"})
 
     if dataloaders["test"]:
         print("Executing validation on test set...")
-        test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
-            model,
-            criterions["test"],
-            dataloaders["test"],
-            prepare_inputs,
-            prepare_labels,
-            on_batch_done=on_batch_done,
-            optimizer=optimizer,
-        )
+        with torch.set_grad_enabled(False):
+            test_loss, test_mad, test_actuals, test_predictions = execute_epoch(
+                model,
+                criterions["test"],
+                dataloaders["test"],
+                prepare_inputs,
+                prepare_labels,
+                on_batch_done=on_batch_done,
+                optimizer=optimizer,
+            )
         print()
 
     return {
