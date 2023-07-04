@@ -10,18 +10,23 @@ def create_fc_layers(
     p_dropout: float,
     activation=nn.Identity,
     use_layer_norm_before_first=False,
+    use_batch_norm=False,
 ) -> nn.Module:
+    batch_norm = nn.BatchNorm1d(input_size) if use_batch_norm else nn.Identity()
     if num == 1:
         if not use_layer_norm_before_first:
-            return nn.Sequential(nn.Linear(input_size, output_size), activation())
+            return nn.Sequential(
+                batch_norm, nn.Linear(input_size, output_size), activation()
+            )
         else:
             return nn.Sequential(
+                batch_norm,
                 nn.LayerNorm(input_size),
                 nn.Linear(input_size, output_size),
                 activation(),
             )
 
-    result = []
+    result = [("0", batch_norm)]
     id = lambda: str(len(result))
     for i in range(num - 1):
         _output_size = int(input_size / 2)
