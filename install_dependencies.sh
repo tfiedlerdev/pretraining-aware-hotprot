@@ -1,5 +1,5 @@
 #!/bin/bash
-conda_path="../anaconda3/etc/profile.d/conda.sh"
+conda_path="../miniconda3/etc/profile.d/conda.sh"
 source ${conda_path}
 conda env create -f environment.yml
 conda activate hotprot
