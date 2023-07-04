@@ -43,6 +43,7 @@ class ESMForThermostability(CachedModel):
         regressor_layer_norm: bool = True,
         freeze_esm: bool = False,
         model_size: ESMSizes = "8M",
+        use_batch_norm: bool = False,
     ):
         super().__init__(
             f"start_token_{model_size}", caching=freeze_esm, enable_grad=not freeze_esm
@@ -51,6 +52,7 @@ class ESMForThermostability(CachedModel):
             model_size in model_names
         ), f"Invalid ESM2 model size: {model_size}. Must be in {model_names.keys()} "
 
+        print("Loading ESM model with batch norm:", use_batch_norm)
         self.model_size = model_size
         self.tokenizer = AutoTokenizer.from_pretrained(model_names[model_size])
         self.regression = create_fc_layers(
@@ -60,6 +62,7 @@ class ESMForThermostability(CachedModel):
             activation=regressor_activation,
             use_layer_norm_before_first=regressor_layer_norm,
             output_size=1,
+            use_batch_norm=use_batch_norm,
         )
         self.freeze_esm = freeze_esm
         self.esm = None
@@ -103,4 +106,5 @@ class ESMForThermostability(CachedModel):
             regressor_layer_norm=config["hugg_esm_layer_norm"],
             freeze_esm=config["hugg_esm_freeze"],
             model_size=config["hugg_esm_size"],
+            use_batch_norm=config["hugg_esm_batch_norm"],
         ).cuda()
