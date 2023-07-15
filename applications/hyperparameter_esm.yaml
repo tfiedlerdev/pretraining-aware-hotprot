@@ -13,6 +13,8 @@ metric:
   name: loss
   goal: minimize
 parameters:
+  seq_len:
+    values: [700]
   learning_rate:
     min: 0.001
     max: 0.05
@@ -34,22 +36,12 @@ parameters:
   dataset:
     values: ["fst"]
   model:
-    values: ["summarizer"]
+    values: ["fc"]
   batch_size:
     values: [1]
   representation_key:
-    values: ["s_s"]
-  summarizer_type: 
-    values: ["average"]
-  summarizer_out_size:
-    values: [1]
-  summarizer_num_layers: 
-    values: [1]
-  summarizer_activation: 
-    values: ["identity"]
-  summarizer_mode:
-    values: ["per_repr_position"]
+    values: ["esm_3B"]
   factorized_rank:
-    values: [1]
+    values: [4]
   loss:
     values: ["scaled_mse", "weighted_mse", "mse"]

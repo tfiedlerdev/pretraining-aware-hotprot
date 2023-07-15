@@ -18,10 +18,12 @@ class FSTDataset(ThermostabilityPregeneratedDataset):
         self,
         dsFilePath: str = "data/train.csv",
         limit: int = 1000000,
+        max_seq_len: int = 700,
         representation_filepath: str = "data",
         representation_key: RepresentationKey = "s_s_avg",
     ) -> None:
-        super().__init__(dsFilePath=dsFilePath, limit=limit, representation_filepath=representation_filepath, representation_key=representation_key)
+        super().__init__(dsFilePath=dsFilePath, limit=limit, max_seq_len=max_seq_len, representation_filepath=representation_filepath, representation_key=representation_key)
+        
 
     def __getitem__(self, index):
         filename, thermo, seq = self.filename_thermo_seq[index]

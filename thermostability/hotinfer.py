@@ -9,7 +9,7 @@ import csv
 from util.prot_t5 import ProtT5Embeddings
 from util.esmfold import ESMFoldEmbeddings
 
-RepresentationKeysComb = Union[RepresentationKey, Literal["prott5_avg", "prott5"]]
+RepresentationKeysComb = Union[RepresentationKey, Literal["prott5_avg", "prott5", "esm_3B_avg"]]
 
 
 class HotInferModel(nn.Module):

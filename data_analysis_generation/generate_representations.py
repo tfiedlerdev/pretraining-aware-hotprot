@@ -15,9 +15,9 @@ from thermostability.hotinfer import RepresentationKeysComb
 
 
 class SequencesDataset(Dataset):
-    def __init__(self, sequences: "set[str]") -> None:
+    def __init__(self, sequences: "set[str]", max_len: int = 700) -> None:
         super().__init__()
-        self.sequences = list(sequences)
+        self.sequences = [sequence for sequence in list(sequences) if len(sequence) <= max_len]
 
     def __len__(self):
         return len(self.sequences)
@@ -45,7 +45,7 @@ def generate_representations(
 
     ds = SequencesDataset(sequences)
     loader = torch.utils.data.DataLoader(
-        ds, batch_size=batch_size, shuffle=False, num_workers=4
+        ds, batch_size=batch_size, shuffle=False, num_workers=1
     )
     timeStart = time.time()
     labels_file = os.path.join(dir_path, "sequences.csv")
@@ -128,8 +128,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "output_dir", type=str, help="Directory in which to place the representations"
     )
+    parser.add_argument("model", type=str, default="esm")
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--model", type=str, default="esm")
     parser.add_argument("--telegram", action="store_true", default=False)
     parser.add_argument(
         "--repr_key",
@@ -144,6 +144,7 @@ if __name__ == "__main__":
             "s_s_0_B",
             "esm_s_B_avg",
             "s_s_avg",
+            "esm_3B"
         ],
     )
 

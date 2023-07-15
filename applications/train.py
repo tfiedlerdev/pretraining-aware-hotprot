@@ -8,6 +8,7 @@ from thermostability.thermo_pregenerated_dataset import (
     zero_padding700_collate,
     zero_padding_700,
 )
+import torch.distributed as dist
 from thermostability.hotinfer import HotInferModel
 
 from thermostability.hotinfer_pregenerated import (
@@ -18,6 +19,7 @@ from thermostability.cnn_pregenerated import CNNPregeneratedFC
 from thermostability.thermo_dataset import ThermostabilityDataset
 import wandb
 import argparse
+import torch.multiprocessing as mp
 import os
 from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
@@ -25,6 +27,8 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerAverage,
 )
 from thermostability.fst_hotinfer import FSTHotProt
+from torch.distributed.fsdp import FullyShardedDataParallel, CPUOffload
+from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy
 from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
 from util.train_helper import (
     train_model,
@@ -52,8 +56,37 @@ torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
 
 
+def setup(rank, world_size):
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12356"
+
+    # initialize the process group
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+
+def main(rank, world_size, args):
+    setup(rank, world_size)
+    argsDict = vars(args)
+    representation_key = argsDict["representation_key"]
+    currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
+    results_path = f"results/train/{representation_key}/{currentTime}"
+    if rank == 0:
+        with wandb.init(config=argsDict, group="DDP", id=f"{rank}_y"):
+            run_train_experiment(
+                config=wandb.config,
+                use_wandb=True,
+                results_path=results_path,
+                should_log=False,
+                rank=rank
+            )
 def run_train_experiment(
-    results_path, config: dict = None, use_wandb=True, should_log=True
+    results_path: str,
+    config: dict = None,
+    use_wandb: bool = True,
+    should_log: bool = True,
+    rank: int = 0,
+    
+    
 ):
     representation_key = config["representation_key"]
     model_parallel = config["model_parallel"] == "true"
@@ -62,10 +95,18 @@ def run_train_experiment(
 
     valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
     train_ds = get_dataset(
-        config["dataset"], "data/train.csv", limit, representation_key
+        config["dataset"],
+        "data/train.csv",
+        limit,
+        representation_key,
+        config["seq_len"],
     )
-    eval_ds = get_dataset(config["dataset"], valFileName, limit, representation_key)
-    test_ds = get_dataset(config["dataset"], "data/test.csv", limit, representation_key)
+    eval_ds = get_dataset(
+        config["dataset"], valFileName, limit, representation_key, config["seq_len"]
+    )
+    test_ds = get_dataset(
+        config["dataset"], "data/test.csv", limit, representation_key, config["seq_len"]
+    )
 
     dataloaders = {
         "train": DataLoader(
@@ -146,6 +187,7 @@ def run_train_experiment(
     )
 
     input_sizes = {
+        "esm_3B": 2560 * 700,
         "esm_s_B_avg": 2560,
         "prott5_avg": 1024,
         "s_s_0_A": 148 * 1024,
@@ -187,11 +229,21 @@ def run_train_experiment(
         if not model_parallel
         else HotInferModel(representation_key, thermo_module=thermo)
     )
-    if not model_parallel:
-        model = model.to("cuda:0")
 
     if config["factorized_rank"] != 0:
-        model = FSTHotProt(model, factorized_sparse_tuning_rank=config["factorized_rank"])
+        model = FSTHotProt(
+            model, factorized_sparse_tuning_rank=config["factorized_rank"]
+        )
+    torch.cuda.set_device(rank)
+    model = model.to(rank)
+    model = FullyShardedDataParallel(
+        model,
+        auto_wrap_policy=size_based_auto_wrap_policy,
+        cpu_offload=CPUOffload(offload_params=True),
+    )
+
+    if not model_parallel and config["factorized_rank"] == 0:
+        model = model.to("cuda:0")
 
     if use_wandb:
         wandb.watch(thermo)
@@ -235,10 +287,8 @@ def run_train_experiment(
         epoch_function=execute_epoch_fst
         if config["dataset"] == "fst"
         else execute_epoch,
-        prepare_inputs=lambda x: x.to("cuda:0"),
-        prepare_labels=lambda x: x.to("cuda:0")
-        if not model_parallel
-        else x.to("cuda:1"),
+        prepare_inputs=lambda x: x,
+        prepare_labels=lambda x: x if not model_parallel else x,
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
@@ -370,13 +420,9 @@ if __name__ == "__main__":
     results_path = f"results/train/{representation_key}/{currentTime}"
 
     if use_wandb:
-        with wandb.init(config=argsDict):
-            run_train_experiment(
-                config=wandb.config,
-                use_wandb=True,
-                results_path=results_path,
-                should_log=should_log,
-            )
+        WORLD_SIZE = torch.cuda.device_count()
+        mp.spawn(main, args=(WORLD_SIZE, args), nprocs=WORLD_SIZE, join=True)
+
     else:
         run_train_experiment(
             config=argsDict,

@@ -4,11 +4,13 @@
 #SBATCH --gpus=1
 #SBATCH --mail-type ALL
 #SBATCH --mail-user leon.hermann@student.hpi.de
-#SBATCH --time=70:0:0
+#SBATCH --partition=sorcery
+#SBATCH --time=4-00:00:00
+#SBATCH --exclude=ac922-[01-02]
 
 eval "$(conda shell.bash hook)"
 conda activate hotprot
-export PYTHONPATH="/hpi/fs00/home/hoangan.nguyen/hot-prot"
-export LD_LIBRARY_PATH="/hpi/fs00/home/hoangan.nguyen/anaconda3/envs/hotprot/lib"
-srun python data_analysis_generation/generate_representations.py data/all_sequences.txt data/uni_prot/T5/ --model="protT5" --telegram --repr_key="prott5_avg"   
+export PYTHONPATH="/hpi/fs00/home/leon.hermann/hot-prot"
+export LD_LIBRARY_PATH="/hpi/fs00/home/leon.hermann/mambaforge/envs/hotprot/lib"
+srun python data_analysis_generation/generate_representations.py /hpi/fs00/scratch/tobias.fiedler/allSequences.txt /hpi/fs00/scratch/leon.hermann/data/esm_3B esm2_t36_3B_UR50D 
 

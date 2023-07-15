@@ -8,13 +8,13 @@ from thermostability.thermo_dataset import calc_norm
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 
 
-def zero_padding(single_repr: torch.Tensor, len: int) -> torch.Tensor:
-    dif = len - single_repr.size(0)
+def zero_padding(single_repr: torch.Tensor, len: int, dim: int = 0) -> torch.Tensor:
+    dif = len - single_repr.size(dim)
     return pad(single_repr, (0, 0, dif, 0), "constant", 0)
 
 
-def zero_padding_700(single_repr: torch.Tensor) -> torch.Tensor:
-    return zero_padding(single_repr, 700)
+def zero_padding_700(single_repr: torch.Tensor, dim: int = 0) -> torch.Tensor:
+    return zero_padding(single_repr, 700, dim=dim)
 
 
 def zero_padding_collate(
@@ -44,6 +44,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
         self,
         dsFilePath: str = "data/train.csv",
         limit: int = 1000000,
+        max_seq_len: int = 700,
         representation_filepath: str = "data",
         representation_key: RepresentationKey = "s_s_avg",
     ) -> None:
@@ -66,7 +67,7 @@ class ThermostabilityPregeneratedDataset(Dataset):
             seq_thermos = [
                 (seq, float(thermo))
                 for (i, (seq, thermo)) in enumerate(spamreader)
-                if i != 0
+                if i != 0 and len(seq) <= max_seq_len
             ]
 
             self.filename_thermo_seq = [
