@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from typing import List, Literal, Union
+from typing import List, Literal, Union, Optional
 import os
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
 from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
@@ -19,6 +19,7 @@ class CachedModel(nn.Module, ABC):
         representation_key: RepresentationKeysComb,
         caching=True,
         enable_grad=False,
+        cache_dir: Optional[str] = None,
     ):
         super().__init__()
         assert (
@@ -38,7 +39,11 @@ class CachedModel(nn.Module, ABC):
         self._enable_grad = enable_grad
         self.representation_key = representation_key
         self._caching = caching
-        self.representations_dir = f"./data/{representation_key}"
+        self.representations_dir = (
+            f"./data/{representation_key}"
+            if cache_dir is None
+            else os.path.join(cache_dir, representation_key)
+        )
 
         if caching:
             os.makedirs(self.representations_dir, exist_ok=True)

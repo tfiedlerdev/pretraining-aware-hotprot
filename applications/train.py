@@ -440,6 +440,23 @@ if __name__ == "__main__":
         type=str_to_bool,
         default="None",
     )
+    parser.add_argument(
+        "--hugg_esm_pooling",
+        choices=["bos_token", "mean"],
+        default=None,
+    )
+    parser.add_argument(
+        "--hugg_esm_cache_dir",
+        type=str,
+        default="./data/",
+        help="Directory to store cached representations with format /<cache_dir>/start_token_{model_size}/<seq>.pt and /<cache_dir>/start_token_{model_size}/sequences.csv. For hugg_esm model, representation key is inferred from model size",
+    )
+    parser.add_argument(
+        "--wandb_run_name",
+        type=str,
+        default=None,
+        help="NAME of the wandb run. If not specified, a name is generated automatically",
+    )
     args = parser.parse_args()
 
     argsDict = vars(args)
@@ -455,7 +472,7 @@ if __name__ == "__main__":
     if use_wandb:
         yamlConfig = YamlConfig()
         wandb.login(key=yamlConfig["WandBApiKey"])
-        with wandb.init(config=argsDict):
+        with wandb.init(config=argsDict, name=argsDict["wandb_run_name"]):
             run_train_experiment(
                 config=argsDict,
                 use_wandb=True,
