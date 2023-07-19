@@ -4,24 +4,25 @@ import torch.nn.utils.prune as prune
 from esm_custom.esm.pretrained import load_model_and_alphabet_hub
 from esm_custom.esm.sparse_multihead_attention import SparseMultiheadAttention
 from util.esm import preprocess_sequences
-import pytorch_lightning as pl
 from os.path import exists
 from pathlib import Path
+from torch.nn import Module
 from thermostability.thermo_pregenerated_dataset import zero_padding_700
+from util.esm import ESMModelType
 
-class FSTHotProt(pl.LightningModule):
-    def __init__(self, hotprot_model, esm2_version: str = "esm2_t36_3B_UR50D", factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
+class FSTHotProt(Module):
+    def __init__(self, hotprot_model, esm_model: ESMModelType = "esm2_t33_650M_UR50D", factorized_sparse_tuning_rank: int = 4, sparse: int = 64):
         super().__init__()
         self.hotinfer = hotprot_model
 
-        model_cache_path = f"cache/fst_{esm2_version}.pt"
-        alphabet_cache_path = f"cache/alphabet_{esm2_version}.pt"
+        model_cache_path = f"cache/fst_{esm_model}_{factorized_sparse_tuning_rank}.pt"
+        alphabet_cache_path = f"cache/alphabet_{esm_model}_{factorized_sparse_tuning_rank}.pt"
         if exists(model_cache_path) and exists(alphabet_cache_path):
             self.fst_esm = torch.load(model_cache_path)
             self.alphabet = torch.load(alphabet_cache_path)
             print("Loaded cached and untrained FST Hotinfer model")
         else:
-            self.fst_esm, self.alphabet = load_model_and_alphabet_hub(esm2_version, True, factorized_sparse_tuning_rank)
+            self.fst_esm, self.alphabet = load_model_and_alphabet_hub(esm_model, True, factorized_sparse_tuning_rank)
             
             for name, m in self.fst_esm.named_modules():
                 if "adapter" in name or "sparse" in name:
@@ -99,12 +100,17 @@ class FSTHotProt(pl.LightningModule):
         esm_s = esm_s[:, 1:-1]
         fst_output = torch.mean(esm_s, dim=2)
         return fst_output
+    
+    def dummy_test(self, sequences: "list[str]"):
+        """
+        Can be used to test if the model runs if embeddings have not been pregenerated
+        """
+        fst_output = self.calculate_representations(sequences)
+        return self.hotinfer(zero_padding_700(fst_output, dim=1))
                 
     def forward(self, input: "tuple[list[str], torch.Tensor]"):
         sequences, esm_embeddings = input
-        
         fst_output = self.calculate_representations(sequences)
         fst_output = zero_padding_700(fst_output, dim=1)
-        print(esm_embeddings.shape, fst_output.shape)
         return self.hotinfer(torch.add(fst_output, esm_embeddings))
         

@@ -7,6 +7,9 @@ from esm_custom.esm.esmfold.v1.misc import (
 )
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 from openfold.np import residue_constants
+from typing import Literal
+
+ESMModelType = Literal["esm2_t48_15B_UR50D", "esm2_t36_3B_UR50D", "esm2_t33_650M_UR50D", "esm2_t30_150M_UR50D", "esm2_t12_35M_UR50D", "esm2_t6_8M_UR50D"]
 
 def preprocess_sequences(sequences: "list[str]", alphabet, device: str = "cuda:0"):
     aatype, mask, residx, linker_mask, chain_index = batch_encode_sequences(sequences)
@@ -39,9 +42,9 @@ def preprocess_sequences(sequences: "list[str]", alphabet, device: str = "cuda:0
 
 
 class ESMEmbeddings:
-    def __init__(self, model_id: str, device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")) -> None:
+    def __init__(self, esm_model: ESMModelType, device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")) -> None:
         self.device = device
-        self.esm, self.alphabet = load_model_and_alphabet_hub(model_id)
+        self.esm, self.alphabet = load_model_and_alphabet_hub(esm_model)
         self.esm.to(self.device)
         
     def __call__(self, sequences: "list[str]", representation_key: RepresentationKey) -> Any:
@@ -54,5 +57,5 @@ class ESMEmbeddings:
         
         esm_s = torch.stack([v for _, v in sorted(res["representations"].items())], dim=2)
         esm_s = esm_s[:, 1:-1]
-        fst_output = torch.mean(esm_s, dim=1)
+        fst_output = torch.mean(esm_s, dim=2)
         return fst_output

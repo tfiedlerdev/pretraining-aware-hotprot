@@ -30,7 +30,7 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
     return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
 
 def get_dataset(ds_config: str, file_name: str, limit: int, representation_key: str, max_seq_len: int = 700) -> Dataset:
-    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key in ["s_s", "esm_3B"] else "data"
+    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key in ["s_s", "esm_3B", "esm_650M", "esm_8M"] else "data"
     if ds_config == "fst":
         return FSTDataset(file_name, limit, max_seq_len, dataset_location, representation_key)
     elif ds_config == "pregenerated":

@@ -26,3 +26,5 @@ runs
 g++
 gcc
 *.out
+
+cache/

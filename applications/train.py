@@ -56,37 +56,11 @@ torch.cuda.empty_cache()
 torch.cuda.list_gpu_processes()
 
 
-def setup(rank, world_size):
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12356"
-
-    # initialize the process group
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-
-
-def main(rank, world_size, args):
-    setup(rank, world_size)
-    argsDict = vars(args)
-    representation_key = argsDict["representation_key"]
-    currentTime = dt.now().strftime("%d-%m-%y_%H:%M:%S")
-    results_path = f"results/train/{representation_key}/{currentTime}"
-    if rank == 0:
-        with wandb.init(config=argsDict, group="DDP", id=f"{rank}_y"):
-            run_train_experiment(
-                config=wandb.config,
-                use_wandb=True,
-                results_path=results_path,
-                should_log=False,
-                rank=rank
-            )
 def run_train_experiment(
     results_path: str,
     config: dict = None,
     use_wandb: bool = True,
-    should_log: bool = True,
-    rank: int = 0,
-    
-    
+    should_log: bool = True,   
 ):
     representation_key = config["representation_key"]
     model_parallel = config["model_parallel"] == "true"
@@ -99,13 +73,13 @@ def run_train_experiment(
         "data/train.csv",
         limit,
         representation_key,
-        config["seq_len"],
+        config["seq_length"],
     )
     eval_ds = get_dataset(
-        config["dataset"], valFileName, limit, representation_key, config["seq_len"]
+        config["dataset"], valFileName, limit, representation_key, config["seq_length"]
     )
     test_ds = get_dataset(
-        config["dataset"], "data/test.csv", limit, representation_key, config["seq_len"]
+        config["dataset"], "data/test.csv", limit, representation_key, config["seq_length"]
     )
 
     dataloaders = {
@@ -188,6 +162,8 @@ def run_train_experiment(
 
     input_sizes = {
         "esm_3B": 2560 * 700,
+        "esm_650M": 1280 * 700,
+        "esm_8M": 320 * 700,
         "esm_s_B_avg": 2560,
         "prott5_avg": 1024,
         "s_s_0_A": 148 * 1024,
@@ -232,15 +208,10 @@ def run_train_experiment(
 
     if config["factorized_rank"] != 0:
         model = FSTHotProt(
-            model, factorized_sparse_tuning_rank=config["factorized_rank"]
+            model,esm_model=config["esm_version"], factorized_sparse_tuning_rank=config["factorized_rank"]
         )
-    torch.cuda.set_device(rank)
-    model = model.to(rank)
-    model = FullyShardedDataParallel(
-        model,
-        auto_wrap_policy=size_based_auto_wrap_policy,
-        cpu_offload=CPUOffload(offload_params=True),
-    )
+        
+    model = model.to("cuda:0")
 
     if not model_parallel and config["factorized_rank"] == 0:
         model = model.to("cuda:0")
@@ -287,8 +258,8 @@ def run_train_experiment(
         epoch_function=execute_epoch_fst
         if config["dataset"] == "fst"
         else execute_epoch,
-        prepare_inputs=lambda x: x,
-        prepare_labels=lambda x: x if not model_parallel else x,
+        prepare_inputs=lambda x: x.to("cuda:0"),
+        prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
@@ -407,6 +378,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--bin_width", type=int, default=20)
     parser.add_argument("--factorized_rank", type=int, default=4)
+    parser.add_argument("--esm_version", type=str, choices=["esm2_t48_15B_UR50D", "esm2_t36_3B_UR50D", "esm2_t33_650M_UR50D", "esm2_t30_150M_UR50D", "esm2_t12_35M_UR50D", "esm2_t6_8M_UR50D"], default="esm2_t6_8M_UR50D")
     args = parser.parse_args()
 
     argsDict = vars(args)
@@ -420,9 +392,13 @@ if __name__ == "__main__":
     results_path = f"results/train/{representation_key}/{currentTime}"
 
     if use_wandb:
-        WORLD_SIZE = torch.cuda.device_count()
-        mp.spawn(main, args=(WORLD_SIZE, args), nprocs=WORLD_SIZE, join=True)
-
+        with wandb.init(config=argsDict):
+            run_train_experiment(
+                config=argsDict,
+                use_wandb=True,
+                results_path=results_path,
+                should_log=should_log,
+            )
     else:
         run_train_experiment(
             config=argsDict,

@@ -144,7 +144,11 @@ if __name__ == "__main__":
             "s_s_0_B",
             "esm_s_B_avg",
             "s_s_avg",
-            "esm_3B"
+            "esm_3B",
+            "esm_650M",
+            "esm_150M",
+            "esm_35M"
+            "esm_8M"
         ],
     )
 
