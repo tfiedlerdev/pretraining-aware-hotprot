@@ -472,7 +472,12 @@ if __name__ == "__main__":
     if use_wandb:
         yamlConfig = YamlConfig()
         wandb.login(key=yamlConfig["WandBApiKey"])
-        with wandb.init(config=argsDict, name=argsDict["wandb_run_name"]):
+        with wandb.init(
+            config=argsDict,
+            name=argsDict["wandb_run_name"],
+            project="hot-prot-applications",
+            entitiy="hotprot",
+        ):
             run_train_experiment(
                 config=argsDict,
                 use_wandb=True,
