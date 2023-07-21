@@ -476,7 +476,7 @@ if __name__ == "__main__":
             config=argsDict,
             name=argsDict["wandb_run_name"],
             project="hot-prot-applications",
-            entitiy="hotprot",
+            entity="hotprot",
         ):
             run_train_experiment(
                 config=argsDict,
