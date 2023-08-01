@@ -1,0 +1,50 @@
+program: applications/train.py
+method: bayes
+name: factorized_sparse_tuning_full_embed
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --nolog
+  - --wandb
+  - --early_stopping
+metric:
+  name: loss
+  goal: minimize
+parameters:
+  learning_rate:
+    min: 0.001
+    max: 0.05
+  model_hidden_layers:
+    values: [1,2,3,4]
+  model_first_hidden_units:
+    values: [1024, 2048]
+  model_dropoutrate:
+    min: 0.0
+    max: 0.3
+  epochs:
+    values: [1]
+  val_on_trainset:
+    values: ["false"]
+  optimizer:
+    values: ["adam"]
+  weight_regularizer:
+    min: 0.0
+    max: 0.005
+  dataset:
+    values: ["fst"]
+  model:
+    values: ["fc"]
+  batch_size:
+    values: [2]
+  representation_key:
+    values: ["esm_150M"]
+  factorized_rank:
+    values: [1,2,4]
+  seq_length:
+    values: [700]
+  loss:
+    values: ["scaled_mse", "weighted_mse", "mse"]
+  esm_version:
+    values: ["esm2_t30_150M_UR50D"]
