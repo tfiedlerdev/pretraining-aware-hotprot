@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 import torch
 import os
 import csv
-from typing import Union
+from typing import Union, Callable
 from torch.nn.functional import pad
 from thermostability.thermo_dataset import calc_norm
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
@@ -32,10 +32,36 @@ def zero_padding_collate(
     results = torch.stack(padded_s_s, 0), torch.stack(temps)
     return results
 
-
 def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     return zero_padding_collate(s_s_list, 700)
 
+def k_max_aggregate_collate(k: int, aggregateFunction: Callable[[torch.Tensor],torch.Tensor]):
+    def execute(
+        s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]",
+    ):
+        padded_s_s = []
+        temps = []
+        for s_s, temp in s_s_list:
+            # s_s: seq_len x 1024
+
+            sums = aggregateFunction(s_s)
+            index_sums = list(enumerate(sums))
+            sorted_index_sums = sorted(index_sums, key=lambda index_sum: index_sum[1].item(), reverse=True)
+            k_max_sums_indices = [i for i,_ in (sorted_index_sums[:k] if len(sorted_index_sums) > k else sorted_index_sums)]
+            s_s_filtered = s_s.index_select(0, torch.LongTensor(k_max_sums_indices))
+
+            padded = zero_padding(s_s_filtered, k)
+            padded_s_s.append(padded)
+            temps.append(temp)
+        results = torch.stack(padded_s_s, 0), torch.stack(temps)
+        return results
+    return execute   
+
+def k_max_sum_collate(k: int):
+    return k_max_aggregate_collate(k, lambda sample: sample.sum(dim=-1))
+
+def k_max_var_collate(k: int):
+    return k_max_aggregate_collate(k, lambda sample: sample.var(dim=-1))
 
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 

@@ -29,3 +29,4 @@ gcc
 
 cache/
 .env
+config.yaml

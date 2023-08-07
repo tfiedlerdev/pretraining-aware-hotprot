@@ -1,6 +1,8 @@
 program: applications/train.py
-method: bayes
-name: factorized_sparse_tuning_test
+method: grid
+name: esm2_repr_k_max
+entity: hotprot
+project: hot-prot-applications
 command:
   - ${env}
   - ${interpreter}
@@ -38,10 +40,12 @@ parameters:
   model:
     values: ["fc"]
   batch_size:
-    values: [1]
+    values: [32]
   representation_key:
-    values: ["esm_3B"]
-  factorized_rank:
-    values: [4]
-  loss:
-    values: ["scaled_mse", "weighted_mse", "mse"]
+    values: ["s_s"]
+  model_dropoutrate:
+    values: [0.2]
+  collate_fn:
+    values: ["k_max_sum_pooling", "k_max_var_pooling"]
+  collate_k:
+    values: [2,4,16,64,128]

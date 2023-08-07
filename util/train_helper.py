@@ -15,6 +15,8 @@ from pynvml.smi import nvidia_smi
 from thermostability.fst_dataset import FSTDataset, zero_padding_fst
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
+    k_max_sum_collate,
+    k_max_var_collate,
     zero_padding700_collate,
 )
 from thermostability.thermo_dataset import ThermostabilityDataset
@@ -82,13 +84,26 @@ def get_dataset(
         return ThermostabilityDataset(file_name, limit)
 
 
-def get_collate_fn(ds_config: str, representation_key: str):
-    if ds_config == "fst":
-        return zero_padding_fst
-    elif representation_key == "s_s":
-        return zero_padding700_collate
-    else:
-        return None
+def get_collate_fn(config: dict, representation_key: str):
+    collate_fn = None
+    if representation_key == "s_s":
+        collate_fn_key = config["collate_fn"]
+        if collate_fn_key == "pad700":
+            collate_fn = zero_padding700_collate
+        else:
+            k = config["collate_k"]
+            if k == None:
+                raise Exception(
+                    f"For the selected collate function ({collate_fn_key}), you need to defined collate_k"
+                )
+            if collate_fn_key == "k_max_sum_pooling":
+                collate_fn = k_max_sum_collate(k)
+            elif collate_fn_key == "k_max_var_pooling":
+                collate_fn = k_max_var_collate(k)
+    elif config["dataset"] == "fst":
+        collate_fn = zero_padding_fst
+
+    return collate_fn
 
 
 def evaluate_temp_bins(predictions, labels, bin_width, key: str):
@@ -205,13 +220,14 @@ def execute_epoch(
         # zero the parameter gradients
         if optimizer:
             optimizer.zero_grad()
+
         outputs = model(inputs)
         loss = criterion(outputs, torch.unsqueeze(labels, 1))
+
         epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
         # statistics
         batch_loss = loss.item()
-
         running_loss += batch_loss
         mean_abs_diff = (
             torch.abs(outputs.squeeze().sub(labels.squeeze())).squeeze().mean().item()
@@ -360,11 +376,11 @@ def train_model(
 
     time_elapsed = time.time() - since
     print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
-    print(f"Best val Acc: {best_epoch_loss:4f}")
+    print(f"Best val epoch loss: {best_epoch_loss:4f}")
 
     # load best model weights
     if best_model_path:
-        model = torch.load(best_model_path)
+        model = torch.load(best_model_path, map_location={"cpu": "cuda:0"})
 
     if dataloaders["test"]:
         print("Executing validation on test set...")
