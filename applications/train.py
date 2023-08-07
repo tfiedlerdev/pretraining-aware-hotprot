@@ -38,7 +38,7 @@ from util.train_helper import (
     execute_epoch,
     execute_epoch_fst,
     log_gpu_memory,
-    log_memory
+    log_memory,
 )
 from datetime import datetime as dt
 from util.experiments import store_experiment
@@ -57,14 +57,14 @@ if torch.cuda.is_available():
 
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
-#torch.cuda.list_gpu_processes()
+# torch.cuda.list_gpu_processes()
 
 
 def run_train_experiment(
     results_path: str,
     config: dict = None,
     use_wandb: bool = True,
-    should_log: bool = True,   
+    should_log: bool = True,
 ):
     representation_key = config["representation_key"]
     model_parallel = config["model_parallel"] == "true"
@@ -86,7 +86,11 @@ def run_train_experiment(
         config["dataset"], valFileName, limit, representation_key, config["seq_length"]
     )
     test_ds = get_dataset(
-        config["dataset"], "data/test.csv", limit, representation_key, config["seq_length"]
+        config["dataset"],
+        "data/test.csv",
+        limit,
+        representation_key,
+        config["seq_length"],
     )
 
     dataloaders = {
@@ -138,7 +142,7 @@ def run_train_experiment(
         "val": eval_losses[config["loss"]],
         "test": test_losses[config["loss"]],
     }
-    
+
     input_sizes = {
         "esm_3B": 2560 * config["seq_length"],
         "esm_650M": 1280 * config["seq_length"],
@@ -176,12 +180,15 @@ def run_train_experiment(
         if config["summarizer_type"] in ["700_instance", "multi_instance"]
         else RepresentationSummarizerAverage(
             per_residue_summary=config["summarizer_mode"] == "per_residue",
-            per_sample_output_size=int(input_sizes[representation_key] / config["seq_length"]) if config["summarizer_mode"] == "per_repr_position" else config["seq_length"]
+            per_sample_output_size=int(
+                input_sizes[representation_key] / config["seq_length"]
+            )
+            if config["summarizer_mode"] == "per_repr_position"
+            else config["seq_length"],
         )
         if config["summarizer_type"] == "average"
         else None
     )
-
 
     input_size = input_sizes[representation_key]
 
@@ -219,9 +226,11 @@ def run_train_experiment(
 
     if config["factorized_rank"] != 0:
         model = FSTHotProt(
-            model,esm_model=config["esm_version"], factorized_sparse_tuning_rank=config["factorized_rank"]
+            model,
+            esm_model=config["esm_version"],
+            factorized_sparse_tuning_rank=config["factorized_rank"],
         )
-        
+
     model = model.to("cuda:0")
 
     if not model_parallel and config["factorized_rank"] == 0:
@@ -232,7 +241,9 @@ def run_train_experiment(
 
     optimizer_ft = (
         torch.optim.Adam(
-            thermo.parameters(), lr=config["learning_rate"], weight_decay=config["weight_regularizer"]
+            thermo.parameters(),
+            lr=config["learning_rate"],
+            weight_decay=config["weight_regularizer"],
         )
         if config["optimizer"] == "adam"
         else torch.optim.SGD(
@@ -275,7 +286,9 @@ def run_train_experiment(
         if config["dataset"] == "fst"
         else execute_epoch,
         prepare_inputs=lambda x: x.to("cuda:0"),
-        prepare_labels=lambda x: x.to("cuda:0") if not model_parallel else x.to("cuda:1"),
+        prepare_labels=lambda x: x.to("cuda:0")
+        if not model_parallel
+        else x.to("cuda:1"),
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
     )
@@ -347,7 +360,9 @@ if __name__ == "__main__":
     parser.add_argument("--model_hidden_layers", type=int, default=1)
     parser.add_argument("--model_first_hidden_units", type=int, default=1024)
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"], default="false")
+    parser.add_argument(
+        "--val_on_trainset", type=str, choices=["true", "false"], default="false"
+    )
     parser.add_argument("--dataset_limit", type=int, default=1000000)
     parser.add_argument(
         "--optimizer", type=str, default="adam", choices=["adam", "sgd"]
@@ -394,7 +409,19 @@ if __name__ == "__main__":
     )
     parser.add_argument("--bin_width", type=int, default=20)
     parser.add_argument("--factorized_rank", type=int, default=4)
-    parser.add_argument("--esm_version", type=str, choices=["esm2_t48_15B_UR50D", "esm2_t36_3B_UR50D", "esm2_t33_650M_UR50D", "esm2_t30_150M_UR50D", "esm2_t12_35M_UR50D", "esm2_t6_8M_UR50D"], default="esm2_t6_8M_UR50D")
+    parser.add_argument(
+        "--esm_version",
+        type=str,
+        choices=[
+            "esm2_t48_15B_UR50D",
+            "esm2_t36_3B_UR50D",
+            "esm2_t33_650M_UR50D",
+            "esm2_t30_150M_UR50D",
+            "esm2_t12_35M_UR50D",
+            "esm2_t6_8M_UR50D",
+        ],
+        default="esm2_t6_8M_UR50D",
+    )
     args = parser.parse_args()
 
     argsDict = vars(args)

@@ -13,18 +13,25 @@ from torch.utils.data import Dataset
 from pynvml.smi import nvidia_smi
 
 from thermostability.fst_dataset import FSTDataset, zero_padding_fst
-from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset, zero_padding700_collate
+from thermostability.thermo_pregenerated_dataset import (
+    ThermostabilityPregeneratedDataset,
+    zero_padding700_collate,
+)
 from thermostability.thermo_dataset import ThermostabilityDataset
 import psutil
 import os
 
+
 def log_gpu_memory(device: int):
-    memory_stats = nvidia_smi.getInstance().DeviceQuery("memory.free, memory.total, memory.used")
+    memory_stats = nvidia_smi.getInstance().DeviceQuery(
+        "memory.free, memory.total, memory.used"
+    )
     total_memory = memory_stats["gpu"][device]["fb_memory_usage"]["total"]
     free_memory = memory_stats["gpu"][device]["fb_memory_usage"]["free"]
     used_memory = memory_stats["gpu"][device]["fb_memory_usage"]["used"]
     unit = memory_stats["gpu"][device]["fb_memory_usage"]["unit"]
     return total_memory, free_memory, unit
+
 
 def log_memory():
     process = psutil.Process(os.getpid())
@@ -33,6 +40,7 @@ def log_memory():
     vms = mem["vms"] / 1000**3
     # returns used memory of the current process in GB
     return rss, vms, "GB"
+
 
 def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals):
     subset_predictions = []
@@ -48,15 +56,32 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
     )
     return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
 
-def get_dataset(ds_config: str, file_name: str, limit: int, representation_key: str, max_seq_len: int = 700) -> Dataset:
-    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M", "esm_35M"] else "data"
+
+def get_dataset(
+    ds_config: str,
+    file_name: str,
+    limit: int,
+    representation_key: str,
+    max_seq_len: int = 700,
+) -> Dataset:
+    dataset_location = (
+        "/hpi/fs00/scratch/leon.hermann/data"
+        if representation_key
+        in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M", "esm_35M"]
+        else "data"
+    )
     if ds_config == "fst":
-        return FSTDataset(file_name, limit, max_seq_len, dataset_location, representation_key)
+        return FSTDataset(
+            file_name, limit, max_seq_len, dataset_location, representation_key
+        )
     elif ds_config == "pregenerated":
-        return ThermostabilityPregeneratedDataset(file_name, limit, max_seq_len, dataset_location, representation_key)
+        return ThermostabilityPregeneratedDataset(
+            file_name, limit, max_seq_len, dataset_location, representation_key
+        )
     else:
         return ThermostabilityDataset(file_name, limit)
-    
+
+
 def get_collate_fn(ds_config: str, representation_key: str):
     if ds_config == "fst":
         return zero_padding_fst
@@ -64,6 +89,7 @@ def get_collate_fn(ds_config: str, representation_key: str):
         return zero_padding700_collate
     else:
         return None
+
 
 def evaluate_temp_bins(predictions, labels, bin_width, key: str):
     np_preds = np.array(predictions)
@@ -108,6 +134,7 @@ def calculate_metrics(predictions, labels, key: str, temp_bin_width: int = 20):
     metrics[f"best_epoch_median_abs_diff_{key}"] = diffs.median()
     metrics[f"best_epoch_mean_abs_diff_{key}"] = diffs.mean()
     return metrics
+
 
 def execute_epoch_fst(
     model: nn.Module,
@@ -154,6 +181,7 @@ def execute_epoch_fst(
         epoch_actuals.squeeze().tolist(),
         epoch_predictions.squeeze().tolist(),
     )
+
 
 def execute_epoch(
     model: nn.Module,
@@ -274,7 +302,7 @@ def train_model(
                             mem_unit,
                             total - free,
                             total,
-                            unit, 
+                            unit,
                             loss,
                             running_mad,
                         ),
@@ -286,7 +314,12 @@ def train_model(
             else:
                 model.eval()  # Set model to evaluate mode
             with torch.set_grad_enabled(phase == "train"):
-                epoch_loss, epoch_mad, epoch_actuals, epoch_predictions = epoch_function(
+                (
+                    epoch_loss,
+                    epoch_mad,
+                    epoch_actuals,
+                    epoch_predictions,
+                ) = epoch_function(
                     model,
                     criterions[phase],
                     dataloaders[phase],

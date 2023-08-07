@@ -9,14 +9,22 @@ from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 from openfold.np import residue_constants
 from typing import Literal
 
-ESMModelType = Literal["esm2_t48_15B_UR50D", "esm2_t36_3B_UR50D", "esm2_t33_650M_UR50D", "esm2_t30_150M_UR50D", "esm2_t12_35M_UR50D", "esm2_t6_8M_UR50D"]
+ESMModelType = Literal[
+    "esm2_t48_15B_UR50D",
+    "esm2_t36_3B_UR50D",
+    "esm2_t33_650M_UR50D",
+    "esm2_t30_150M_UR50D",
+    "esm2_t12_35M_UR50D",
+    "esm2_t6_8M_UR50D",
+]
+
 
 def preprocess_sequences(sequences: "list[str]", alphabet, device: str = "cuda:0"):
     aatype, mask, residx, linker_mask, chain_index = batch_encode_sequences(sequences)
-    
+
     if not isinstance(residx, torch.Tensor):
         residx = collate_dense_tensors(residx)
-        
+
     aatype, mask, residx, linker_mask = map(
         lambda x: x.to(device), (aatype, mask, residx, linker_mask)
     )
@@ -27,7 +35,10 @@ def preprocess_sequences(sequences: "list[str]", alphabet, device: str = "cuda:0
 
     # === ESM ===
     aatype = (aatype + 1).masked_fill(mask != 1, 0)
-    af2_to_esm = torch.tensor([alphabet.padding_idx] + [alphabet.get_idx(v) for v in residue_constants.restypes_with_x]).to(device)
+    af2_to_esm = torch.tensor(
+        [alphabet.padding_idx]
+        + [alphabet.get_idx(v) for v in residue_constants.restypes_with_x]
+    ).to(device)
     esmaa = af2_to_esm[aatype]
 
     batch_size = esmaa.size(0)
@@ -37,25 +48,35 @@ def preprocess_sequences(sequences: "list[str]", alphabet, device: str = "cuda:0
     esmaa = torch.cat([bos, esmaa, eos], dim=1)
     # Use the first padding index as eos during inference.
     esmaa[range(batch_size), (esmaa != 1).sum(1)] = eosi
-    
+
     return esmaa
 
 
 class ESMEmbeddings:
-    def __init__(self, esm_model: ESMModelType, device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")) -> None:
+    def __init__(
+        self,
+        esm_model: ESMModelType,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ) -> None:
         self.device = device
         self.esm, self.alphabet = load_model_and_alphabet_hub(esm_model)
         self.esm.to(self.device)
-        
-    def __call__(self, sequences: "list[str]", representation_key: RepresentationKey) -> Any:
+
+    def __call__(
+        self, sequences: "list[str]", representation_key: RepresentationKey
+    ) -> Any:
         esmaa = preprocess_sequences(sequences, self.alphabet)
         res = self.esm(
             esmaa,
             repr_layers=range(self.esm.num_layers + 1),
             need_head_weights=False,
         )
-        
-        esm_s = torch.stack([v for _, v in sorted(res["representations"].items())], dim=2)
+
+        esm_s = torch.stack(
+            [v for _, v in sorted(res["representations"].items())], dim=2
+        )
         esm_s = esm_s[:, 1:-1]
         fst_output = torch.mean(esm_s, dim=2)
         return fst_output

@@ -36,6 +36,7 @@ def zero_padding_collate(
 def zero_padding700_collate(s_s_list: "list[tuple[torch.Tensor, torch.Tensor]]"):
     return zero_padding_collate(s_s_list, 700)
 
+
 """ Loads pregenerated esmfold outputs (sequence representations s_s) """
 
 

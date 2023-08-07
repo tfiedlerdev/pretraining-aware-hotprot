@@ -17,7 +17,9 @@ from thermostability.hotinfer import RepresentationKeysComb
 class SequencesDataset(Dataset):
     def __init__(self, sequences: "set[str]", max_len: int = 700) -> None:
         super().__init__()
-        self.sequences = [sequence for sequence in list(sequences) if len(sequence) <= max_len]
+        self.sequences = [
+            sequence for sequence in list(sequences) if len(sequence) <= max_len
+        ]
 
     def __len__(self):
         return len(self.sequences)
@@ -74,7 +76,7 @@ def generate_representations(
                 embedding_generator = ProtT5Embeddings()
             else:
                 embedding_generator = ESMEmbeddings(model)
-                
+
             emb = embedding_generator(sequences=inputs, representation_key=repr_key)
             batchesPredicted += 1
             with open(labels_file, "a") as csv:
@@ -148,7 +150,7 @@ if __name__ == "__main__":
             "esm_650M",
             "esm_150M",
             "esm_35M",
-            "esm_8M"
+            "esm_8M",
         ],
     )
 
