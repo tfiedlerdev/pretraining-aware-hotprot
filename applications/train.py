@@ -37,7 +37,8 @@ from util.train_helper import (
     get_collate_fn,
     execute_epoch,
     execute_epoch_fst,
-    log_gpu_memory
+    log_gpu_memory,
+    log_memory
 )
 from datetime import datetime as dt
 from util.experiments import store_experiment
@@ -142,6 +143,7 @@ def run_train_experiment(
         "esm_3B": 2560 * config["seq_length"],
         "esm_650M": 1280 * config["seq_length"],
         "esm_150M": 640 * config["seq_length"],
+        "esm_35M": 480 * config["seq_length"],
         "esm_8M": 320 * config["seq_length"],
         "esm_s_B_avg": 2560,
         "prott5_avg": 1024,
@@ -256,6 +258,12 @@ def run_train_experiment(
         )
         return not has_improved
 
+    total, free, unit = log_gpu_memory(0)
+    rms, vms, mem_unit = log_memory()
+
+    print(f"GPU Mem before train start: {total - free} / {total} {unit}")
+    print(f"RAM before training: RSS {rms} {mem_unit}, VMS {vms} {mem_unit}")
+
     train_result = train_model(
         model,
         criterions,
@@ -339,7 +347,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_hidden_layers", type=int, default=1)
     parser.add_argument("--model_first_hidden_units", type=int, default=1024)
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"])
+    parser.add_argument("--val_on_trainset", type=str, choices=["true", "false"], default="false")
     parser.add_argument("--dataset_limit", type=int, default=1000000)
     parser.add_argument(
         "--optimizer", type=str, default="adam", choices=["adam", "sgd"]

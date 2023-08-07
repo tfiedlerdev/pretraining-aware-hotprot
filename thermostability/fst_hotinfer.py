@@ -88,6 +88,7 @@ class FSTHotProt(Module):
                 torch.save(self.fst_esm.cpu(), f)
             with open(alphabet_cache_path, "wb") as f:
                 torch.save(self.alphabet, f)
+        self.fst_esm = self.fst_esm.to("cuda:0")
      
     def calculate_representations(self, sequences: "list[str]"):
         esmaa = preprocess_sequences(sequences, self.alphabet)

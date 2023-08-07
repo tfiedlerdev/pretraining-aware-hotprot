@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A renard-molecule2022
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 #SBATCH --gpus=1
 #SBATCH --mail-type ALL
 #SBATCH --mail-user leon.hermann@student.hpi.de
@@ -12,4 +12,4 @@ eval "$(conda shell.bash hook)"
 conda activate hotprot
 export PYTHONPATH="/hpi/fs00/home/leon.hermann/hot-prot"
 export LD_LIBRARY_PATH="/hpi/fs00/home/leon.hermann/mambaforge/envs/hotprot/lib"
-srun wandb agent hotprot/hot-prot-applications/bjs0i5nw
+srun wandb agent hotprot/hot-prot-applications/1ms8eglh

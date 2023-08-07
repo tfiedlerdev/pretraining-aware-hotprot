@@ -15,6 +15,8 @@ from pynvml.smi import nvidia_smi
 from thermostability.fst_dataset import FSTDataset, zero_padding_fst
 from thermostability.thermo_pregenerated_dataset import ThermostabilityPregeneratedDataset, zero_padding700_collate
 from thermostability.thermo_dataset import ThermostabilityDataset
+import psutil
+import os
 
 def log_gpu_memory(device: int):
     memory_stats = nvidia_smi.getInstance().DeviceQuery("memory.free, memory.total, memory.used")
@@ -22,12 +24,15 @@ def log_gpu_memory(device: int):
     free_memory = memory_stats["gpu"][device]["fb_memory_usage"]["free"]
     used_memory = memory_stats["gpu"][device]["fb_memory_usage"]["used"]
     unit = memory_stats["gpu"][device]["fb_memory_usage"]["unit"]
-    print("-------Memory Log-------")
-    print(f"Total memory CUDA #{device}: {total_memory} {unit}")
-    print(f"Free memory CUDA #{device}: {free_memory} {unit}")
-    #if "allocated_bytes.all.peak" in torch.cuda.memory_stats(device).keys():
-    #    used_memory = torch.cuda.memory_stats(device)["allocated_bytes.all.peak"]
-    #    print(f"Used memory CUDA #{device}: {used_memory / 1024**3} MiB")
+    return total_memory, free_memory, unit
+
+def log_memory():
+    process = psutil.Process(os.getpid())
+    mem = dict(process.memory_info()._asdict())
+    rss = mem["rss"] / 1000**3
+    vms = mem["vms"] / 1000**3
+    # returns used memory of the current process in GB
+    return rss, vms, "GB"
 
 def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals):
     subset_predictions = []
@@ -44,7 +49,7 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
     return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
 
 def get_dataset(ds_config: str, file_name: str, limit: int, representation_key: str, max_seq_len: int = 700) -> Dataset:
-    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M"] else "data"
+    dataset_location = "/hpi/fs00/scratch/leon.hermann/data" if representation_key in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M", "esm_35M"] else "data"
     if ds_config == "fst":
         return FSTDataset(file_name, limit, max_seq_len, dataset_location, representation_key)
     elif ds_config == "pregenerated":
@@ -255,18 +260,26 @@ def train_model(
                     if torch.isnan(loss).any():
                         print(f"Nan loss: {torch.isnan(loss)}| Loss: {loss}")
                 if idx % 10 == 0:
+                    total, free, unit = log_gpu_memory(0)
+                    rms, vms, mem_unit = log_memory()
                     tqdm.write(
-                        "Epoch: [{}/{}], Batch: [{}/{}], batch loss: {:.6f}, epoch abs diff mean {:.6f}".format(
+                        "Epoch: [{}/{}], Batch: [{}/{}], RAM: {:.2f} {}, {:.2f} {}, GPU: {:.2f} / {:.2f} {}, batch loss: {:.6f}, epoch abs diff mean {:.6f}".format(
                             epoch,
                             num_epochs,
                             idx + 1,
                             len(dataloaders[phase]),
+                            rms,
+                            mem_unit,
+                            vms,
+                            mem_unit,
+                            total - free,
+                            total,
+                            unit, 
                             loss,
                             running_mad,
                         ),
                         end="\r",
                     )
-                    log_gpu_memory(0)
 
             if phase == "train":
                 model.train()  # Set model to training mode
@@ -307,7 +320,6 @@ def train_model(
 
                     best_epoch_actuals = epoch_actuals
                     best_epoch_predictions = epoch_predictions
-        log_gpu_memory(0)
         print()
         if phase == "val" and should_stop(epoch_losses["val"]):
             print("Stopping early...")

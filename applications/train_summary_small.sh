@@ -12,4 +12,4 @@ eval "$(conda shell.bash hook)"
 conda activate hotprot
 export PYTHONPATH="/hpi/fs00/home/leon.hermann/hot-prot"
 export LD_LIBRARY_PATH="/hpi/fs00/home/leon.hermann/mambaforge/envs/hotprot/lib"
-srun wandb agent hotprot/hot-prot-applications/0y7sbxhl
+srun wandb agent hotprot/hot-prot-applications/eu165gzr

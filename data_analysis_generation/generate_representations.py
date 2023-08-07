@@ -147,7 +147,7 @@ if __name__ == "__main__":
             "esm_3B",
             "esm_650M",
             "esm_150M",
-            "esm_35M"
+            "esm_35M",
             "esm_8M"
         ],
     )
