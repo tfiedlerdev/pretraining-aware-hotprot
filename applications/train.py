@@ -74,7 +74,10 @@ def run_train_experiment(
         )
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset(
-            config["dataset"], "train", limit=limit, max_seq_len=config["seq_length"]
+            config["dataset_split"],
+            "train",
+            limit=limit,
+            max_seq_len=config["seq_length"],
         )
     )
 
@@ -86,7 +89,10 @@ def run_train_experiment(
         )
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset(
-            config["dataset"], "val", limit=limit, max_seq_len=config["seq_length"]
+            config["dataset_split"],
+            "val",
+            limit=limit,
+            max_seq_len=config["seq_length"],
         )
     )
 
@@ -96,7 +102,10 @@ def run_train_experiment(
         )
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset(
-            config["dataset"], "test", limit=limit, max_seq_len=config["seq_length"]
+            config["dataset_split"],
+            "test",
+            limit=limit,
+            max_seq_len=config["seq_length"],
         )
     )
     collate_fn = None
@@ -463,7 +472,7 @@ if __name__ == "__main__":
         help="NAME of the wandb run. If not specified, a name is generated automatically",
     )
     parser.add_argument(
-        "--dataset",
+        "--dataset_split",
         type=str,
         choices=datasets.keys(),
         default="ours",
