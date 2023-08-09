@@ -37,6 +37,7 @@ from thermostability.huggingface_esm import (
     model_names as esm2_model_names,
 )
 from util.yaml_config import YamlConfig
+from thermostability.thermo_dataset import datasets
 
 cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -73,7 +74,7 @@ def run_train_experiment(
         )
         if config["dataset"] == "pregenerated"
         else ThermostabilityDataset(
-            "data/train.csv", limit=limit, max_seq_len=config["seq_length"]
+            config["dataset"], "train", limit=limit, max_seq_len=config["seq_length"]
         )
     )
 
@@ -84,7 +85,9 @@ def run_train_experiment(
             valFileName, limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset(valFileName, limit=limit)
+        else ThermostabilityDataset(
+            config["dataset"], "val", limit=limit, max_seq_len=config["seq_length"]
+        )
     )
 
     test_ds = (
@@ -92,7 +95,9 @@ def run_train_experiment(
             "data/test.csv", limit=limit, representation_key=representation_key
         )
         if config["dataset"] == "pregenerated"
-        else ThermostabilityDataset("data/test.csv", limit=limit)
+        else ThermostabilityDataset(
+            config["dataset"], "test", limit=limit, max_seq_len=config["seq_length"]
+        )
     )
     collate_fn = None
     if representation_key == "s_s":
@@ -456,6 +461,13 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="NAME of the wandb run. If not specified, a name is generated automatically",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=datasets.keys(),
+        default="ours",
+        help="Name of the dataset split to use. 'ours' for our split which has multiple measurements per protein, 'ours_median' for our split with median values per protein (train, val and test don't have overlapping protein clusters and val and test weren't seen during ESM2 training), flip for the split from the flip paper (single measurement per protein, first measurement per protein taken. Val and test not ensured to be unseen during ESM2 training)",
     )
     args = parser.parse_args()
 

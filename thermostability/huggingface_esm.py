@@ -6,7 +6,7 @@ from thermostability.hotinfer_pregenerated import create_fc_layers
 from typing import Literal
 import os
 
-ESMSizes = Literal["8M", "35M", "150M", "650M", "3B", "15B"]
+ESMSizes = Literal["8M", "35M", "150M", "650M", "3B", "15B", "v1_1B"]
 
 model_names = {
     "8M": "facebook/esm2_t6_8M_UR50D",
@@ -15,6 +15,7 @@ model_names = {
     "650M": "facebook/esm2_t33_650M_UR50D",
     "3B": "facebook/esm2_t36_3B_UR50D",
     "15B": "facebook/esm2_t48_15B_UR50D",
+    "v1_1B": "facebook/esm1b_t33_650M_UR50S",
 }
 
 required_config_attributes = [
@@ -32,6 +33,7 @@ embedding_dims = {
     "650M": 1280,
     "3B": 2560,
     "15B": 5120,
+    "v1_1B": 1280,
 }
 
 
@@ -85,8 +87,8 @@ class ESMForThermostability(CachedModel):
         return self.esm
 
     def forward(self, sequences: "list[str]"):
-        batch_bos_token_embeddings = self.get_cached_or_compute(sequences)
-        return self.regression(batch_bos_token_embeddings)
+        batch_pooled_embeddings = self.get_cached_or_compute(sequences)
+        return self.regression(batch_pooled_embeddings)
 
     def compute_representations(self, seqs: "list[str]", _: RepresentationKeysComb):
         assert (
@@ -103,7 +105,13 @@ class ESMForThermostability(CachedModel):
         s_embedding = (
             last_hidden_state[:, 0, :]
             if self.pooling == "bos_token"
-            else torch.mean(last_hidden_state, dim=1)
+            else torch.mean(  # mean over sequence for each token embedding except bos token
+                last_hidden_state[
+                    :,
+                    1:,
+                ],
+                dim=1,
+            )
         )
         return s_embedding
 
