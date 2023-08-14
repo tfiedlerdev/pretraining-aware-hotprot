@@ -23,9 +23,9 @@ datasets = {
         "val": "data/val_median.csv",
     },
     "flip": {
-        "train": "data/train_flip.csv",
-        "test": "data/test_flip.csv",
-        "val": "data/val_flip.csv",
+        "train": "data/train_FLIP.csv",
+        "test": "data/test_FLIP.csv",
+        "val": "data/val_FLIP.csv",
     },
 }
 DatasetNames = Literal["ours", "ours_median", "flip"]
