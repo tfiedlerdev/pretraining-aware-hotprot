@@ -98,22 +98,29 @@ def run_train_experiment(
 
     train_ds = get_dataset(
         config["dataset"],
-        "data/train.csv",
+        config["split"],
+        "train",
         limit,
         representation_key,
         config["seq_length"],
     )
     eval_ds = get_dataset(
-        config["dataset"], valFileName, limit, representation_key, config["seq_length"]
-    )
-    test_ds = get_dataset(
         config["dataset"],
-        "data/test.csv",
+        config["split"],
+        "train" if val_on_trainset else "val",
         limit,
         representation_key,
         config["seq_length"],
     )
-    
+    test_ds = get_dataset(
+        config["dataset"],
+        config["split"],
+        "test",
+        limit,
+        representation_key,
+        config["seq_length"],
+    )
+
     dataloaders = {
         "train": DataLoader(
             train_ds,
@@ -270,7 +277,9 @@ def run_train_experiment(
 
     optimizer_ft = (
         torch.optim.Adam(
-            model.parameters(), lr=config["learning_rate"], weight_decay=config["weight_regularizer"]
+            model.parameters(),
+            lr=config["learning_rate"],
+            weight_decay=config["weight_regularizer"],
         )
         if config["optimizer"] == "adam"
         else torch.optim.SGD(
@@ -421,6 +430,12 @@ if __name__ == "__main__":
         type=str,
         choices=["pregenerated", "end_to_end", "uni_prot", "fst"],
         default="pregenerated",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        choices=["full", "median", "FLIP"],
+        default="full",
     )
     parser.add_argument(
         "--loss",

@@ -61,7 +61,8 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
 
 def get_dataset(
     ds_config: str,
-    file_name: str,
+    split: Literal["full", "median", "FLIP"],
+    phase: Literal["train", "val", "test"],
     limit: int,
     representation_key: str,
     max_seq_len: int = 700,
@@ -72,6 +73,27 @@ def get_dataset(
         in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M", "esm_35M"]
         else "data"
     )
+    split_base_path = "/hpi/fs00/scratch/tobias.fiedler/hotprot_data/splits/"
+    split_files = {
+        "full": {
+            "train": split_base_path + "train.csv",
+            "val": split_base_path + "val.csv",
+            "test": split_base_path + "test.csv",
+        },
+        "median": {
+            "train": split_base_path + "train_median.csv",
+            "val": split_base_path + "val_median.csv",
+            "test": split_base_path + "test_median.csv",
+        },
+        "FLIP": {
+            "train": split_base_path + "train_FLIP.csv",
+            "val": split_base_path + "val_FLIP.csv",
+            "test": split_base_path + "test_FLIP.csv",
+        },
+    }
+    file_name = split_files[split][phase]
+    
+    
     if ds_config == "fst":
         return FSTDataset(
             file_name, limit, max_seq_len, dataset_location, representation_key
