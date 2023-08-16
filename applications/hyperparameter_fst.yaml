@@ -1,6 +1,6 @@
 program: applications/train.py
 method: bayes
-name: factorized_sparse_tuning_full_embed
+name: fst_full_embed
 command:
   - ${env}
   - ${interpreter}
@@ -24,7 +24,7 @@ parameters:
     min: 0.0
     max: 0.3
   epochs:
-    values: [1]
+    values: [10]
   val_on_trainset:
     values: ["false"]
   optimizer:
@@ -37,7 +37,7 @@ parameters:
   model:
     values: ["fc"]
   batch_size:
-    values: [2]
+    values: [4]
   representation_key:
     values: ["esm_150M"]
   factorized_rank:

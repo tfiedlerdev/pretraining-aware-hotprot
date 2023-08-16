@@ -35,7 +35,7 @@ parameters:
   model:
     values: ["summarizer"]
   batch_size:
-    values: [8]
+    values: [12]
   representation_key:
     values: ["esm_150M"]
   factorized_rank:
@@ -47,6 +47,6 @@ parameters:
   esm_version:
     values: ["esm2_t30_150M_UR50D"]
   summarizer_mode:
-    values: ["per_residue"]
+    values: ["per_repr_position", "per_residue"]
   summarizer_type:
     values: ["average"]
