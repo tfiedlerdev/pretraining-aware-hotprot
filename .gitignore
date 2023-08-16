@@ -26,4 +26,7 @@ runs
 g++
 gcc
 *.out
+
+cache/
+.env
 config.yaml

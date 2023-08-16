@@ -7,16 +7,19 @@ import csv
 from datetime import datetime
 from typing import Optional
 from util.telegram import TelegramBot
-from util.esm import ESMEmbeddings
+from util.esmfold import ESMFoldEmbeddings
 from util.prot_t5 import ProtT5Embeddings
+from util.esm import ESMEmbeddings
 import traceback
 from thermostability.hotinfer import RepresentationKeysComb
 
 
 class SequencesDataset(Dataset):
-    def __init__(self, sequences: "set[str]") -> None:
+    def __init__(self, sequences: "set[str]", max_len: int = 700) -> None:
         super().__init__()
-        self.sequences = list(sequences)
+        self.sequences = [
+            sequence for sequence in list(sequences) if len(sequence) <= max_len
+        ]
 
     def __len__(self):
         return len(self.sequences)
@@ -44,7 +47,7 @@ def generate_representations(
 
     ds = SequencesDataset(sequences)
     loader = torch.utils.data.DataLoader(
-        ds, batch_size=batch_size, shuffle=False, num_workers=4
+        ds, batch_size=batch_size, shuffle=False, num_workers=1
     )
     timeStart = time.time()
     labels_file = os.path.join(dir_path, "sequences.csv")
@@ -67,9 +70,13 @@ def generate_representations(
         print(f"At batch {index}/{numBatches}")
         with torch.no_grad():
             print("Predicting")
-            embedding_generator = (
-                ESMEmbeddings() if model == "esm" else ProtT5Embeddings()
-            )
+            if model == "esm":
+                embedding_generator = ESMFoldEmbeddings()
+            elif model == "protT5":
+                embedding_generator = ProtT5Embeddings()
+            else:
+                embedding_generator = ESMEmbeddings(model)
+
             emb = embedding_generator(sequences=inputs, representation_key=repr_key)
             batchesPredicted += 1
             with open(labels_file, "a") as csv:
@@ -123,8 +130,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "output_dir", type=str, help="Directory in which to place the representations"
     )
+    parser.add_argument("model", type=str, default="esm")
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--model", type=str, default="esm", choices=["esm", "protT5"])
     parser.add_argument("--telegram", action="store_true", default=False)
     parser.add_argument(
         "--repr_key",
@@ -139,6 +146,11 @@ if __name__ == "__main__":
             "s_s_0_B",
             "esm_s_B_avg",
             "s_s_avg",
+            "esm_3B",
+            "esm_650M",
+            "esm_150M",
+            "esm_35M",
+            "esm_8M",
             "s_s"
         ],
     )
