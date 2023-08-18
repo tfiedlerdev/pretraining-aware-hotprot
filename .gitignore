@@ -27,3 +27,5 @@ g++
 gcc
 *.out
 config.yaml
+
+sbatch/train_hugg_*
