@@ -3,8 +3,9 @@
 #SBATCH --mem=48G
 #SBATCH --gpus=1
 #SBATCH --mail-user tobias.fiedler@student.hpi.de
-#SBATCH --time=120:0:0
+#SBATCH --time=5-00:00:00
 #SBATCH --partition=sorcery
+#SBATCH --exclude=ac922-[01-02]
 
 eval "$(conda shell.bash hook)"
 conda activate hotprot

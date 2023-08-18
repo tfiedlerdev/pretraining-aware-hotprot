@@ -5,13 +5,13 @@ from tqdm.notebook import tqdm
 import numpy as np
 import sys
 import wandb
-from typing import Callable
+from typing import Callable, get_args, Tuple, List
 from scipy.stats import spearmanr
 import pandas as pd
 from typing_extensions import TypedDict, Literal
 from torch.utils.data import Dataset
 from pynvml.smi import nvidia_smi
-
+from util.yaml_config import YamlConfig
 from thermostability.fst_dataset import FSTDataset, zero_padding_fst
 from thermostability.thermo_pregenerated_dataset import (
     ThermostabilityPregeneratedDataset,
@@ -59,51 +59,60 @@ def metrics_per_temp_range(min_temp, max_temp, epoch_predictions, epoch_actuals)
     return f"{min_temp}-{max_temp}", diffs, subset_predictions, subset_actuals
 
 
+DatasetNamesLiteral = Literal["pregenerated", "end_to_end", "fst"]
+DatasetNames: List[DatasetNamesLiteral] = get_args(DatasetNamesLiteral)
+DatasetSplitsLiteral = Literal["ours", "ours_median", "flip"]
+DatasetSplits: List[DatasetNamesLiteral] = get_args(DatasetNamesLiteral)
+
+
 def get_dataset(
-    ds_config: str,
-    split: Literal["full", "median", "FLIP"],
+    dataset: DatasetNamesLiteral,
+    split: DatasetSplitsLiteral,
+    yaml_config: YamlConfig,
     phase: Literal["train", "val", "test"],
     limit: int,
     representation_key: str,
     max_seq_len: int = 700,
 ) -> Dataset:
-    dataset_location = (
-        "/hpi/fs00/scratch/leon.hermann/data"
-        if representation_key
-        in ["s_s", "esm_3B", "esm_650M", "esm_8M", "esm_150M", "esm_35M"]
-        else "data"
-    )
-    split_base_path = "/hpi/fs00/scratch/tobias.fiedler/hotprot_data/splits/"
+    splits_dir_path = yaml_config["DatasetSplitsPath"]
     split_files = {
-        "full": {
-            "train": split_base_path + "train.csv",
-            "val": split_base_path + "val.csv",
-            "test": split_base_path + "test.csv",
+        "ours": {
+            "train": os.path.join(splits_dir_path, "train.csv"),
+            "val": os.path.join(splits_dir_path, "val.csv"),
+            "test": os.path.join(splits_dir_path, "test.csv"),
         },
-        "median": {
-            "train": split_base_path + "train_median.csv",
-            "val": split_base_path + "val_median.csv",
-            "test": split_base_path + "test_median.csv",
+        "ours_median": {
+            "train": os.path.join(splits_dir_path, "train_median.csv"),
+            "val": os.path.join(splits_dir_path, "val_median.csv"),
+            "test": os.path.join(splits_dir_path, "test_median.csv"),
         },
-        "FLIP": {
-            "train": split_base_path + "train_FLIP.csv",
-            "val": split_base_path + "val_FLIP.csv",
-            "test": split_base_path + "test_FLIP.csv",
+        "flip": {
+            "train": os.path.join(splits_dir_path, "train_FLIP.csv"),
+            "val": os.path.join(splits_dir_path, "val_FLIP.csv"),
+            "test": os.path.join(splits_dir_path, "test_FLIP.csv"),
         },
     }
     file_name = split_files[split][phase]
-    
-    
-    if ds_config == "fst":
+
+    if dataset == "fst":
         return FSTDataset(
-            file_name, limit, max_seq_len, dataset_location, representation_key
+            file_name,
+            limit,
+            max_seq_len,
+            yaml_config["DatasetPath"],
+            representation_key,
         )
-    elif ds_config == "pregenerated":
+    elif dataset == "pregenerated":
         return ThermostabilityPregeneratedDataset(
-            file_name, limit, max_seq_len, dataset_location, representation_key
+            file_name,
+            limit,
+            max_seq_len,
+            yaml_config["DatasetPath"],
+            representation_key,
         )
-    else:
-        return ThermostabilityDataset(file_name, limit)
+    elif dataset == "end_to_end":
+        return ThermostabilityDataset(file_name, limit, max_seq_len)
+    raise Exception(f"Unknown dataset {dataset}. Must be one of {DatasetNames}")
 
 
 def get_collate_fn(config: dict, representation_key: str):

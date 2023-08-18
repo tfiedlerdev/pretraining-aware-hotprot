@@ -3,14 +3,6 @@ from torch.utils.data import DataLoader
 from torch import nn as nn
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
-from thermostability.thermo_pregenerated_dataset import (
-    ThermostabilityPregeneratedDataset,
-    zero_padding700_collate,
-    zero_padding_700,
-    k_max_sum_collate,
-    k_max_var_collate,
-)
-import torch.distributed as dist
 from thermostability.hotinfer import HotInferModel
 
 from thermostability.hotinfer_pregenerated import (
@@ -21,10 +13,8 @@ from thermostability.cnn_pregenerated import (
     CNNPregeneratedFC,
     CNNPregeneratedFullHeightFC,
 )
-from thermostability.thermo_dataset import ThermostabilityDataset
 import wandb
 import argparse
-import torch.multiprocessing as mp
 import os
 from thermostability.repr_summarizer import (
     RepresentationSummarizerSingleInstance,
@@ -32,8 +22,6 @@ from thermostability.repr_summarizer import (
     RepresentationSummarizerAverage,
 )
 from thermostability.fst_hotinfer import FSTHotProt
-from torch.distributed.fsdp import FullyShardedDataParallel, CPUOffload
-from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy
 from util.weighted_mse import WeightedMSELossMax, WeightedMSELossScaled
 from util.train_helper import (
     train_model,
@@ -44,13 +32,10 @@ from util.train_helper import (
     execute_epoch_fst,
     log_gpu_memory,
     log_memory,
+    DatasetNames,
 )
 from datetime import datetime as dt
 from util.experiments import store_experiment
-from esm_custom.esm.esmfold.v1.pretrained import esmfold_v1
-from esm_custom.esm.esmfold.v1.esmfold import ESMFold
-from esm_custom.esm.sparse_multihead_attention import SparseMultiheadAttention
-from tqdm import tqdm
 from pynvml import nvmlInit
 from thermostability.huggingface_esm import (
     ESMForThermostability,
@@ -68,6 +53,7 @@ if torch.cuda.is_available():
 cpu = torch.device("cpu")
 torch.cuda.empty_cache()
 # torch.cuda.list_gpu_processes()
+yamlConfig = YamlConfig()
 
 
 def str_to_bool(value):
@@ -92,13 +78,12 @@ def run_train_experiment(
     val_on_trainset = config["val_on_trainset"] == "true"
     limit = config["dataset_limit"]
 
-    valFileName = "data/train.csv" if val_on_trainset else "data/val.csv"
-
     log_gpu_memory(0)
 
     train_ds = get_dataset(
         config["dataset"],
-        config["split"],
+        config["dataset_split"],
+        yamlConfig,
         "train",
         limit,
         representation_key,
@@ -106,7 +91,8 @@ def run_train_experiment(
     )
     eval_ds = get_dataset(
         config["dataset"],
-        config["split"],
+        config["dataset_split"],
+        yamlConfig,
         "train" if val_on_trainset else "val",
         limit,
         representation_key,
@@ -114,7 +100,8 @@ def run_train_experiment(
     )
     test_ds = get_dataset(
         config["dataset"],
-        config["split"],
+        config["dataset_split"],
+        yamlConfig,
         "test",
         limit,
         representation_key,
@@ -218,18 +205,16 @@ def run_train_experiment(
         else None
     )
 
-    input_size = input_sizes[representation_key]
-
     thermo = (
         HotInferPregeneratedFC(
-            input_len=input_size,
+            input_len=input_sizes[representation_key],
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
             p_dropout=config["model_dropoutrate"],
         )
         if config["model"] == "fc"
         else CNNPregeneratedFC(
-            input_seq_len=input_size,
+            input_seq_len=input_sizes[representation_key],
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
         )
@@ -251,7 +236,7 @@ def run_train_experiment(
     )
 
     model = (
-        ESMForThermostability.from_config(config)
+        ESMForThermostability.from_config(config, yamlConfig)
         if config["model"] == "hugg_esm"
         else (
             thermo
@@ -260,7 +245,7 @@ def run_train_experiment(
         )
     )
 
-    if config["factorized_rank"] != 0:
+    if config["factorized_rank"] != 0 and config["dataset"] == "fst":
         model = FSTHotProt(
             model,
             esm_model=config["esm_version"],
@@ -365,7 +350,7 @@ def run_train_experiment(
     print("storing experiment")
 
     if should_log:
-        store_experiment(
+        val_cm = store_experiment(
             results_path,
             "val",
             best_epoch_loss,
@@ -375,7 +360,7 @@ def run_train_experiment(
             config,
             epoch_mads,
         )
-        store_experiment(
+        test_cm = store_experiment(
             results_path,
             "test",
             test_epoch_loss,
@@ -384,6 +369,8 @@ def run_train_experiment(
             test_actuals,
             args=config,
         )
+        if use_wandb:
+            wandb.log({"val_cm": wandb.Image(val_cm), "test_cm": wandb.Image(test_cm)})
 
     return best_epoch_loss
 
@@ -428,14 +415,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["pregenerated", "end_to_end", "uni_prot", "fst"],
+        choices=DatasetNames,
         default="pregenerated",
-    )
-    parser.add_argument(
-        "--split",
-        type=str,
-        choices=["full", "median", "FLIP"],
-        default="full",
     )
     parser.add_argument(
         "--loss",
@@ -462,7 +443,7 @@ if __name__ == "__main__":
         default=700,
     )
     parser.add_argument("--bin_width", type=int, default=20)
-    parser.add_argument("--factorized_rank", type=int, default=4)
+    parser.add_argument("--factorized_rank", type=int, default=None)
     parser.add_argument(
         "--esm_version",
         type=str,
@@ -492,6 +473,29 @@ if __name__ == "__main__":
         type=str_to_bool,
         default="None",
     )
+    parser.add_argument(
+        "--hugg_esm_batch_norm",
+        type=str_to_bool,
+        default="None",
+    )
+    parser.add_argument(
+        "--hugg_esm_pooling",
+        choices=["bos_token", "mean"],
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb_run_name",
+        type=str,
+        default=None,
+        help="NAME of the wandb run. If not specified, a name is generated automatically",
+    )
+    parser.add_argument(
+        "--dataset_split",
+        type=str,
+        choices=["ours", "ours_median", "flip"],
+        default="ours",
+        help="Name of the dataset split to use. 'ours' for our split which has multiple measurements per protein, 'ours_median' for our split with median values per protein (train, val and test don't have overlapping protein clusters and val and test weren't seen during ESM2 training), flip for the split from the flip paper (single measurement per protein, first measurement per protein taken. Val and test not ensured to be unseen during ESM2 training)",
+    )
     args = parser.parse_args()
 
     argsDict = vars(args)
@@ -505,9 +509,13 @@ if __name__ == "__main__":
     results_path = f"results/train/{representation_key}/{currentTime}"
 
     if use_wandb:
-        yamlConfig = YamlConfig()
         wandb.login(key=yamlConfig["WandBApiKey"])
-        with wandb.init(config=argsDict):
+        with wandb.init(
+            config=argsDict,
+            name=argsDict["wandb_run_name"],
+            project="hot-prot-applications",
+            entity="hotprot",
+        ):
             run_train_experiment(
                 config=argsDict,
                 use_wandb=True,

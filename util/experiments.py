@@ -73,7 +73,7 @@ def store_experiment(
     )
     heatmap.set_xlabel("Predictions")
     heatmap.set_ylabel("Targets")
-    plt.savefig(os.path.join(output_dir_path, "sns_heatmap.png"))
+    plt.savefig(os.path.join(output_dir_path, f"{key}_sns_heatmap.png"))
 
     # disp = ConfusionMatrixDisplay(cm, display_labels=sorted(set(actual_classes)))
     disp = ConfusionMatrixDisplay.from_predictions(
@@ -81,5 +81,14 @@ def store_experiment(
     )
     fig, ax = plt.subplots(figsize=(15, 15))
     disp.plot(ax=ax)
-    plt.savefig(os.path.join(output_dir_path, "conf_mat.png"))
+
+    corrects = 0
+    for i in range(len(actual_classes)):
+        if actual_classes[i] == pred_classes[i]:
+            corrects += 1
+    acc = corrects / len(actual_classes)
+    disp.figure_.suptitle(f"CM {key} (acc. {acc:.2f})")
+    cm_path = os.path.join(output_dir_path, f"{key}_conf_mat.png")
+    plt.savefig(cm_path)
     print(f"Results stored in {output_dir_path}")
+    return cm_path

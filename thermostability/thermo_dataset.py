@@ -3,6 +3,7 @@ import torch
 import os
 import csv
 import numpy as np
+from typing import Literal
 
 
 def calc_norm(temps: "list[float]"):
@@ -13,12 +14,11 @@ def calc_norm(temps: "list[float]"):
 class ThermostabilityDataset(Dataset):
     def __init__(
         self,
-        dataset_filepath: str = "data/train.csv",
+        dataset_filepath: str,
         limit: int = 100000,
         max_seq_len: int = 700,
     ) -> None:
         super().__init__()
-
         if not os.path.exists(dataset_filepath):
             raise Exception(f"{dataset_filepath} does not exist.")
 
