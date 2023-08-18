@@ -58,7 +58,7 @@ def generate_representations(
     file_prefixes = [
         int(fname.split(".")[0])
         for fname in os.listdir(dir_path)
-        if fname != "sequences.csv"
+        if not fname.endswith(".csv")
     ]
     maxFilePrefix = max(file_prefixes) if len(file_prefixes) > 0 else 0
     print(f"Starting with maxFilePrefix {maxFilePrefix}")
@@ -151,7 +151,7 @@ if __name__ == "__main__":
             "esm_150M",
             "esm_35M",
             "esm_8M",
-            "s_s"
+            "s_s",
         ],
     )
     parser.add_argument("--max_seq_len", type=int, default=700)
@@ -161,16 +161,22 @@ if __name__ == "__main__":
     telegram_bot = TelegramBot() if args["telegram"] else None
 
     with open(args["input_file"], "r") as f:
-        seqs = [line.replace("\n", "") for line in f.readlines()]
+        seqs = set([line.replace("\n", "") for line in f.readlines()])
 
     print(f"Representations of {len(seqs)} sequences to be created")
     already_created_seqs = get_already_created_sequences(args["output_dir"])
     print(
         f"Representations of {len(already_created_seqs)} sequences of those already created"
     )
-    remaining_seqs = [seq for seq in set(seqs).difference(already_created_seqs) if len(seq) < args["max_seq_len"]]
+    remaining_seqs = [
+        seq
+        for seq in set(seqs).difference(already_created_seqs)
+        if len(seq) < args["max_seq_len"]
+    ]
 
-    print(f"Creating remaining representations of {len(remaining_seqs)} sequences")
+    print(
+        f"Creating remaining representations of {len(remaining_seqs)} sequences of max length {args['max_seq_len']}"
+    )
 
     try:
         generate_representations(
