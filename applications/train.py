@@ -205,18 +205,16 @@ def run_train_experiment(
         else None
     )
 
-    input_size = input_sizes[representation_key]
-
     thermo = (
         HotInferPregeneratedFC(
-            input_len=input_size,
+            input_len=input_sizes[representation_key],
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
             p_dropout=config["model_dropoutrate"],
         )
         if config["model"] == "fc"
         else CNNPregeneratedFC(
-            input_seq_len=input_size,
+            input_seq_len=input_sizes[representation_key],
             num_hidden_layers=config["model_hidden_layers"],
             first_hidden_size=config["model_first_hidden_units"],
         )
@@ -238,7 +236,7 @@ def run_train_experiment(
     )
 
     model = (
-        ESMForThermostability.from_config(config)
+        ESMForThermostability.from_config(config, yamlConfig)
         if config["model"] == "hugg_esm"
         else (
             thermo
@@ -247,7 +245,7 @@ def run_train_experiment(
         )
     )
 
-    if config["factorized_rank"] != 0:
+    if config["factorized_rank"] != 0 and config["dataset"] == "fst":
         model = FSTHotProt(
             model,
             esm_model=config["esm_version"],
@@ -445,7 +443,7 @@ if __name__ == "__main__":
         default=700,
     )
     parser.add_argument("--bin_width", type=int, default=20)
-    parser.add_argument("--factorized_rank", type=int, default=4)
+    parser.add_argument("--factorized_rank", type=int, default=None)
     parser.add_argument(
         "--esm_version",
         type=str,

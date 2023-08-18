@@ -21,6 +21,9 @@ class FSTHotProt(Module):
     ):
         super().__init__()
         self.hotinfer = hotprot_model
+        assert (
+            factorized_sparse_tuning_rank != None and factorized_sparse_tuning_rank > 0
+        ), f"Factorized sparse tuning rank must be a positive integer but is {factorized_sparse_tuning_rank}"
 
         model_cache_path = f"cache/fst_{esm_model}_{factorized_sparse_tuning_rank}.pt"
         alphabet_cache_path = (

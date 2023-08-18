@@ -33,11 +33,6 @@ class CachedModel(nn.Module, ABC):
                 enable_grad == False
             ), "Enable grad can only be true if caching is disabled"
 
-        self.repr_model = (
-            ProtT5Embeddings(device="cuda:0")
-            if representation_key == "prott5_avg"
-            else ESMFoldEmbeddings(device="cuda:0")
-        )
         print(
             "Initializing CachedModel with caching: ",
             caching,
