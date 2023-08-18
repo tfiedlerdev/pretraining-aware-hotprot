@@ -29,6 +29,7 @@ gcc
 config.yaml
 
 sbatch/train_hugg_*
+sbatch/*_ss.sh
 
 cache/
 .env
