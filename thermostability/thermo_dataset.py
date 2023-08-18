@@ -11,36 +11,14 @@ def calc_norm(temps: "list[float]"):
     return temps_np.mean(), temps_np.var()
 
 
-datasets = {
-    "ours": {
-        "train": "data/train.csv",
-        "test": "data/test.csv",
-        "val": "data/val.csv",
-    },
-    "ours_median": {
-        "train": "data/train_median.csv",
-        "test": "data/test_median.csv",
-        "val": "data/val_median.csv",
-    },
-    "flip": {
-        "train": "data/train_FLIP.csv",
-        "test": "data/test_FLIP.csv",
-        "val": "data/val_FLIP.csv",
-    },
-}
-DatasetNames = Literal["ours", "ours_median", "flip"]
-
-
 class ThermostabilityDataset(Dataset):
     def __init__(
         self,
-        dataset: DatasetNames,
-        split: Literal["train", "test", "val"],
+        dataset_filepath: str,
         limit: int = 100000,
         max_seq_len: int = 700,
     ) -> None:
         super().__init__()
-        dataset_filepath = datasets[dataset][split]
         if not os.path.exists(dataset_filepath):
             raise Exception(f"{dataset_filepath} does not exist.")
 

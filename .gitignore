@@ -29,3 +29,7 @@ gcc
 config.yaml
 
 sbatch/train_hugg_*
+
+cache/
+.env
+config.yaml

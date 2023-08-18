@@ -5,6 +5,7 @@ from thermostability.hotinfer import CachedModel, RepresentationKeysComb
 from thermostability.hotinfer_pregenerated import create_fc_layers
 from typing import Literal
 import os
+from util.yaml_config import YamlConfig
 
 ESMSizes = Literal["8M", "35M", "150M", "650M", "3B", "15B", "v1_1B"]
 
@@ -116,7 +117,7 @@ class ESMForThermostability(CachedModel):
         return s_embedding
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, yaml_config: YamlConfig):
         for attr in required_config_attributes:
             assert (
                 attr in config
@@ -130,5 +131,5 @@ class ESMForThermostability(CachedModel):
             model_size=config["hugg_esm_size"],
             use_batch_norm=config["hugg_esm_batch_norm"],
             pooling=config["hugg_esm_pooling"],
-            cache_dir=config["hugg_esm_cache_dir"],
+            cache_dir=yaml_config["HuggESMCacheDir"],
         ).cuda()

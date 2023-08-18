@@ -7,10 +7,11 @@ class RepresentationSummarizerAverage(nn.Module):
     def __init__(
         self,
         per_residue_summary=False,
+        per_sample_output_size=700,
     ):
         super().__init__()
         self.per_residue_summary = per_residue_summary
-        self.per_sample_output_size = 700 if per_residue_summary else 1024
+        self.per_sample_output_size = per_sample_output_size
 
     def forward(self, s_s: torch.Tensor):
         # [-1, sequence_len, 1024]

@@ -7,10 +7,13 @@ from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 import csv
 from util.prot_t5 import ProtT5Embeddings
+from util.esmfold import ESMFoldEmbeddings
 from util.esm import ESMEmbeddings
 from abc import ABC, abstractmethod
 
-RepresentationKeysComb = Union[RepresentationKey, Literal["prott5_avg", "prott5"]]
+RepresentationKeysComb = Union[
+    RepresentationKey, Literal["prott5_avg", "prott5", "esm_3B_avg"]
+]
 
 
 class CachedModel(nn.Module, ABC):
@@ -30,6 +33,11 @@ class CachedModel(nn.Module, ABC):
                 enable_grad == False
             ), "Enable grad can only be true if caching is disabled"
 
+        self.repr_model = (
+            ProtT5Embeddings(device="cuda:0")
+            if representation_key == "prott5_avg"
+            else ESMFoldEmbeddings(device="cuda:0")
+        )
         print(
             "Initializing CachedModel with caching: ",
             caching,

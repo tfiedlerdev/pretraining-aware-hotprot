@@ -1,8 +1,6 @@
 program: applications/train.py
-method: grid
-name: esm2_repr_k_max
-entity: hotprot
-project: hot-prot-applications
+method: bayes
+name: fst_full_embed
 command:
   - ${env}
   - ${interpreter}
@@ -15,18 +13,16 @@ metric:
   name: loss
   goal: minimize
 parameters:
-  seq_len:
-    values: [700]
   learning_rate:
     min: 0.001
     max: 0.05
   model_hidden_layers:
-    values: [1]
+    values: [1,2,3,4]
   model_first_hidden_units:
-    values: [1024]
+    values: [1024, 2048]
   model_dropoutrate:
     min: 0.0
-    max: 0.5
+    max: 0.3
   epochs:
     values: [10]
   val_on_trainset:
@@ -34,18 +30,21 @@ parameters:
   optimizer:
     values: ["adam"]
   weight_regularizer:
-    values: ["true", "false"]
+    min: 0.0
+    max: 0.005
   dataset:
     values: ["fst"]
   model:
     values: ["fc"]
   batch_size:
-    values: [32]
+    values: [4]
   representation_key:
-    values: ["s_s"]
-  model_dropoutrate:
-    values: [0.2]
-  collate_fn:
-    values: ["k_max_sum_pooling", "k_max_var_pooling"]
-  collate_k:
-    values: [2,4,16,64,128]
+    values: ["esm_150M"]
+  factorized_rank:
+    values: [1,2,4]
+  seq_length:
+    values: [700]
+  loss:
+    values: ["scaled_mse", "weighted_mse", "mse"]
+  esm_version:
+    values: ["esm2_t30_150M_UR50D"]

@@ -1,0 +1,54 @@
+program: applications/train.py
+method: bayes
+name: fst_summary_med_median_dataset
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --nolog
+  - --wandb
+  - --early_stopping
+metric:
+  name: loss
+  goal: minimize
+parameters:
+  learning_rate:
+    min: 0.001
+    max: 0.05
+  model_hidden_layers:
+    values: [1,2,3,4]
+  model_first_hidden_units:
+    values: [1024, 2048, 4096]
+  model_dropoutrate:
+    min: 0.0
+    max: 0.3
+  epochs:
+    values: [10]
+  optimizer:
+    values: ["adam"]
+  weight_regularizer:
+    min: 0.0
+    max: 0.005
+  dataset:
+    values: ["fst"]
+  model:
+    values: ["summarizer"]
+  batch_size:
+    values: [12]
+  representation_key:
+    values: ["esm_150M"]
+  factorized_rank:
+    values: [1,2,4]
+  seq_length:
+    values: [700]
+  loss:
+    values: ["scaled_mse", "weighted_mse", "mse"]
+  esm_version:
+    values: ["esm2_t30_150M_UR50D"]
+  summarizer_mode:
+    values: ["per_repr_position", "per_residue"]
+  summarizer_type:
+    values: ["average"]
+  split:
+    values: ["median"]
