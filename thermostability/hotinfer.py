@@ -74,7 +74,8 @@ class CachedModel(nn.Module, ABC):
                     repr = None
                     if seq in self.meta:
                         repr = torch.load(
-                            os.path.join(self.representations_dir, self.meta[seq])
+                            os.path.join(self.representations_dir, self.meta[seq]),
+                            map_location="cuda:0",
                         )
                         if type(repr) == list:
                             repr = torch.stack(repr)
