@@ -253,7 +253,8 @@ def execute_epoch(
             optimizer.zero_grad()
 
         outputs = model(inputs)
-        loss = criterion(outputs, torch.unsqueeze(labels, 1))
+
+        loss = criterion(torch.squeeze(outputs), torch.squeeze(labels))
 
         epoch_predictions = torch.cat((epoch_predictions, outputs.cpu()))
         epoch_actuals = torch.cat((epoch_actuals, labels.cpu()))
@@ -298,7 +299,7 @@ def train_model(
     use_wandb,
     num_epochs=25,
     best_model_path: str = None,
-    max_gradient_clip: float = 10,
+    max_gradient_clip: float = None,
     epoch_function: Callable = execute_epoch,
     prepare_inputs: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
     prepare_labels: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
@@ -325,7 +326,7 @@ def train_model(
                 if phase == "train":
                     if not torch.isnan(loss):
                         loss.backward()
-                        if max_gradient_clip:
+                        if not max_gradient_clip is None:
                             threshold = max_gradient_clip
                             for p in model.parameters():
                                 if p.grad is not None:

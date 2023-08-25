@@ -10,13 +10,23 @@ from util.prot_t5 import ProtT5Embeddings
 from util.esmfold import ESMFoldEmbeddings
 from util.esm import ESMEmbeddings
 from abc import ABC, abstractmethod
+from typing import Iterator
 
 RepresentationKeysComb = Union[
     RepresentationKey, Literal["prott5_avg", "prott5", "esm_3B_avg"]
 ]
 
 
-class CachedModel(nn.Module, ABC):
+class HotProtModel(nn.Module, ABC):
+    def __init__(self):
+        super().__init__()
+
+    def get_learnable_parameters(self) -> Iterator[nn.Parameter]:
+        """Override this method to return the learnable parameters of the model if not all parameters are learnable"""
+        return self.parameters()
+
+
+class CachedModel(HotProtModel, ABC):
     def __init__(
         self,
         representation_key: RepresentationKeysComb,

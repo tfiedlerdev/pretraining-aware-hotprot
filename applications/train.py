@@ -262,19 +262,19 @@ def run_train_experiment(
 
     optimizer_ft = (
         torch.optim.Adam(
-            model.parameters(),
+            model.get_learnable_parameters(),
             lr=config["learning_rate"],
             weight_decay=config["weight_regularizer"],
         )
         if config["optimizer"] == "adam"
         else torch.optim.SGD(
-            model.parameters(),
+            model.get_learnable_parameters(),
             lr=config["learning_rate"],
             momentum=0.9,
             weight_decay=config["weight_regularizer"],
         )
     )
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.5)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft)
     if should_log:
         os.makedirs(results_path, exist_ok=True)
 
@@ -310,6 +310,7 @@ def run_train_experiment(
         prepare_labels=lambda x: x.to("cuda:0") if torch.is_tensor(x) else x,
         best_model_path=os.path.join(results_path, "model.pt") if should_log else None,
         should_stop=should_stop,
+        max_gradient_clip=config["max_gradient_clip"],
     )
     best_epoch_predictions = train_result["best_epoch_predictions"]
     best_epoch_actuals = train_result["best_epoch_actuals"]
@@ -469,18 +470,8 @@ if __name__ == "__main__":
         default="None",
     )
     parser.add_argument(
-        "--hugg_esm_layer_norm",
-        type=str_to_bool,
-        default="None",
-    )
-    parser.add_argument(
-        "--hugg_esm_batch_norm",
-        type=str_to_bool,
-        default="None",
-    )
-    parser.add_argument(
         "--hugg_esm_pooling",
-        choices=["bos_token", "mean"],
+        choices=["bos_token", "mean", "meanFLIP"],
         default=None,
     )
     parser.add_argument(
@@ -495,6 +486,12 @@ if __name__ == "__main__":
         choices=["ours", "ours_median", "flip"],
         default="ours",
         help="Name of the dataset split to use. 'ours' for our split which has multiple measurements per protein, 'ours_median' for our split with median values per protein (train, val and test don't have overlapping protein clusters and val and test weren't seen during ESM2 training), flip for the split from the flip paper (single measurement per protein, first measurement per protein taken. Val and test not ensured to be unseen during ESM2 training)",
+    )
+    parser.add_argument(
+        "--max_gradient_clip",
+        type=float,
+        default=10,
+        help="Clipping threshold for the model parameter gradients during training. If None, no clipping is performed",
     )
     args = parser.parse_args()
 

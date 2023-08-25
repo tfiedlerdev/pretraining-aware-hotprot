@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, EsmForSequenceClassification, EsmModel
 from torch import nn
 from thermostability.hotinfer import CachedModel, RepresentationKeysComb
 from thermostability.hotinfer_pregenerated import create_fc_layers
-from typing import Literal
+from typing import Literal, Iterator
 import os
 from util.yaml_config import YamlConfig
 
@@ -38,17 +38,27 @@ embedding_dims = {
 }
 
 
+class ESMAttention1dMean(nn.Module):
+    """Regression head from FLIP: Attention1d removed, leaving a basic linear model"""
+
+    def __init__(self, d_embedding):  # [batch x embedding (1280)]  --> [batch x 1]
+        super(ESMAttention1dMean, self).__init__()
+        self.linear = nn.Linear(d_embedding, d_embedding)
+        self.relu = nn.ReLU()
+        self.final = nn.Linear(d_embedding, 1)
+
+    def forward(self, x):
+        x = self.relu(self.linear(x))
+        x = self.final(x)
+        return x
+
+
 class ESMForThermostability(CachedModel):
     def __init__(
         self,
-        regressor_layers: int = 3,
-        regressor_dropout: float = 0.3,
-        regressor_activation: nn.Module = nn.LeakyReLU,
-        regressor_layer_norm: bool = True,
         freeze_esm: bool = False,
         model_size: ESMSizes = "8M",
-        use_batch_norm: bool = False,
-        pooling: Literal["bos_token", "mean"] = "bos_token",
+        pooling: Literal["bos_token", "mean", "mean_FLIP"] = "bos_token",
         cache_dir: str = None,
     ):
         super().__init__(
@@ -61,22 +71,16 @@ class ESMForThermostability(CachedModel):
             model_size in model_names
         ), f"Invalid ESM2 model size (--hugg_esm_size): {model_size}. Must be in {model_names.keys()} "
 
-        print("Loading ESM model with batch norm:", use_batch_norm)
         self.model_size = model_size
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_names[model_size], cache_dir=cache_dir
         )
-        self.regression = create_fc_layers(
-            num=regressor_layers,
-            input_size=embedding_dims[model_size],
-            p_dropout=regressor_dropout,
-            activation=regressor_activation,
-            use_layer_norm_before_first=regressor_layer_norm,
-            output_size=1,
-            use_batch_norm=use_batch_norm,
-        )
+        self.regression = ESMAttention1dMean(embedding_dims[model_size])
+
         self.freeze_esm = freeze_esm
-        self.esm = None
+        self.esm = (
+            None if freeze_esm else self._get_esm()
+        )  # make sure esm is included in learnable params if unfreezed
         self.pooling = pooling
         self.cache_dir = cache_dir
 
@@ -116,6 +120,11 @@ class ESMForThermostability(CachedModel):
         )
         return s_embedding
 
+    def get_learnable_parameters(self) -> Iterator[nn.Parameter]:
+        return (
+            self.parameters() if not self.freeze_esm else self.regression.parameters()
+        )
+
     @classmethod
     def from_config(cls, config, yaml_config: YamlConfig):
         for attr in required_config_attributes:
@@ -124,12 +133,8 @@ class ESMForThermostability(CachedModel):
             ), f"Missing required attribute {attr} in config for ESMForThermostability"
 
         return ESMForThermostability(
-            regressor_layers=config["model_hidden_layers"],
-            regressor_dropout=config["model_dropoutrate"],
-            regressor_layer_norm=config["hugg_esm_layer_norm"],
             freeze_esm=config["hugg_esm_freeze"],
             model_size=config["hugg_esm_size"],
-            use_batch_norm=config["hugg_esm_batch_norm"],
             pooling=config["hugg_esm_pooling"],
             cache_dir=yaml_config["HuggESMCacheDir"],
         ).cuda()

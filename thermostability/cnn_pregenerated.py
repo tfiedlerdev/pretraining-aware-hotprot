@@ -1,9 +1,10 @@
 from torch import nn
 import torch
 from collections import OrderedDict
+from thermostability.hotinfer import HotProtModel
 
 
-class CNNPregenerated(nn.Module):
+class CNNPregenerated(HotProtModel):
     def __init__(self, hidden_size, hidden_layers):
         super.__init__()
         rnn_hidden_size = hidden_size
@@ -112,8 +113,9 @@ class CNNPregeneratedFC(nn.Module):
 
         return nn.Sequential(OrderedDict(result))
 
+
 class CNNPregeneratedFullHeightFC(nn.Module):
-    def __init__(self,  num_hidden_layers=1, first_hidden_size=512):
+    def __init__(self, num_hidden_layers=1, first_hidden_size=512):
         super().__init__()
 
         # s_s shape torch.Size([1, sequence_len, 1024])
@@ -121,7 +123,12 @@ class CNNPregeneratedFullHeightFC(nn.Module):
         output_channels = 16
 
         self.thermo_cnn = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=output_channels, kernel_size=(3, 1024), stride=(1, 1)),
+            nn.Conv2d(
+                in_channels=1,
+                out_channels=output_channels,
+                kernel_size=(3, 1024),
+                stride=(1, 1),
+            ),
         )
         inter_height = 1
         inter_width = 698

@@ -1,9 +1,10 @@
 from torch import nn
 import torch
 from thermostability.hotinfer_pregenerated import create_fc_layers
+from thermostability.hotinfer import HotProtModel
 
 
-class RepresentationSummarizerAverage(nn.Module):
+class RepresentationSummarizerAverage(HotProtModel):
     def __init__(
         self,
         per_residue_summary=False,
@@ -18,7 +19,7 @@ class RepresentationSummarizerAverage(nn.Module):
         return s_s.mean(2 if self.per_residue_summary else 1)
 
 
-class RepresentationSummarizerSingleInstance(nn.Module):
+class RepresentationSummarizerSingleInstance(HotProtModel):
     def __init__(
         self,
         num_hidden_layers=1,
@@ -60,7 +61,7 @@ class RepresentationSummarizerSingleInstance(nn.Module):
         return stacked
 
 
-class RepresentationSummarizerMultiInstance(nn.Module):
+class RepresentationSummarizerMultiInstance(HotProtModel):
     def __init__(
         self,
         num_hidden_layers=0,
