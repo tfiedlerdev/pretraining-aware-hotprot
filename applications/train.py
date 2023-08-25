@@ -274,7 +274,7 @@ def run_train_experiment(
             weight_decay=config["weight_regularizer"],
         )
     )
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7)
     if should_log:
         os.makedirs(results_path, exist_ok=True)
 

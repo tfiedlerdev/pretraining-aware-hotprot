@@ -7,7 +7,6 @@ from thermostability.hotinfer_pregenerated import HotInferPregeneratedFC
 from esm_custom.esm.esmfold.v1.esmfold import RepresentationKey
 import csv
 from util.prot_t5 import ProtT5Embeddings
-from util.esmfold import ESMFoldEmbeddings
 from util.esm import ESMEmbeddings
 from abc import ABC, abstractmethod
 from typing import Iterator

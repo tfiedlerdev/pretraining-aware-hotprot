@@ -20,9 +20,6 @@ model_names = {
 }
 
 required_config_attributes = [
-    "model_hidden_layers",
-    "model_dropoutrate",
-    "hugg_esm_layer_norm",
     "hugg_esm_freeze",
     "hugg_esm_size",
 ]
