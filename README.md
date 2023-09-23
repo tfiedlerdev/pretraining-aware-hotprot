@@ -5,6 +5,7 @@ In the second we compare that dataset split with that used in the [FLIP paper](h
 We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
 
 Take a look at a summarization of results [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results.
+The full report can be found [here](XXX)
 
 ## Setup 
 See [1st semester](XXXX)
