@@ -1,5 +1,5 @@
-# HotProt
-This repository contains the code and results of our [1st](XXX) Programming Life with Deep Learning seminar project as well as our 2nd, which is a continuation of the first. 
+# HotProt - Part Deux
+This repository contains the code and results of our [1st](https://github.com/LeonHermann322/hot-prot#old-content-semester-1) Programming Life with Deep Learning seminar project as well as our 2nd, which is a continuation of the first. 
 In the first we attempt to predict protein thermostability using ESMFold embeddings. For that we use a custom dataset split that considers UniRef50 clustering and ESMFold/ESM2 pretraining.
 In the second we compare that dataset split with that used in the [FLIP paper](https://www.biorxiv.org/content/10.1101/2021.11.09.467890v1), which to the day of the project start was the first published project attempting to predict the absolute thermostability from a given amino acid sequence.
 We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
@@ -8,7 +8,7 @@ Take a look at a summarization of results [here](https://docs.google.com/spreads
 The full report can be found [here](XXX)
 
 ## Setup 
-See [1st semester](XXXX)
+See [1st semester](https://github.com/LeonHermann322/hot-prot#setup-1)
 
 ## Resouces
 - [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
