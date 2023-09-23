@@ -8,8 +8,28 @@ Take a look at the raw results in tabular form [here](https://docs.google.com/sp
 The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing).
 The full report can be found [here](XXX)
 
-## Setup 
-See [1st semester](https://github.com/LeonHermann322/hot-prot#setup-1)
+## Setup
+These steps can be taken to setup the project on a linux machine.
+1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
+2. Run `./install_dependencies.sh`. You need to add the path to your conda.sh file in the script. Or follow the different steps manually. The package `transformers` automatically installs a torch version that we don't want. That is why we have to uninstall it first, so we can install ours. That is also done in the script.
+3. Activate conda enviroment with `conda activate hotprot`
+
+### Imports
+- If you are using vscode and want to work with jupyter notebooks, go into vscode setting and set Jupyter: Notebook File Root to `${workspaceFolder}`
+- To make the relative imports work set the Env Variable to your current project dir, e.g 
+```sh
+export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
+```
+
+### Data
+We have prepared a ZIP archive containing 
+- all data required for generating our train, test and validation sets 
+- (FROM SEMESTER #1) a pretrained model for ESM and ProtT5 representations
+- (FROM SEMESTER #1) ESM per protein representation for all sequences in our train/validation/test set with a length < 700
+- (FROM SEMESTER #1) ProtT5 per protein representation for all sequences in our train/validation/test set with a length < 700
+
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
+2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook. This will create the HotProt, HotProt median and FLIP splits.
 
 ## Resouces
 - [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
