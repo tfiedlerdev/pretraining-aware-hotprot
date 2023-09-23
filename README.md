@@ -1,8 +1,25 @@
 # HotProt
-Second semester results: https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing
-Rest of this readme will be adapted by us before the presentation
+This repository contains the code and results of our [1st](XXX) Programming Life with Deep Learning seminar project as well as our 2nd, which is a continuation of the first. 
+In the first we attempt to predict protein thermostability using ESMFold embeddings. For that we use a custom dataset split that considers UniRef50 clustering and ESMFold/ESM2 pretraining.
+In the second we compare that dataset split with that used in the [FLIP paper](https://www.biorxiv.org/content/10.1101/2021.11.09.467890v1), which to the day of the project start was the first published project attempting to predict the absolute thermostability from a given amino acid sequence.
+We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
 
-# Old content
+Take a look at a summarization of results [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results.
+
+## Setup 
+See [1st semester](XXXX)
+
+## Resouces
+- [ESM2 language model paper](https://www.biorxiv.org/content/10.1101/622803v4)
+- [ESM Github Repo](https://github.com/facebookresearch/esm)
+- [UniProt Protein Embeddings](https://www.uniprot.org/help/embeddings)
+- [UniProt Protein Embeddings Paper](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9477085&tag=1)
+- [FLIP Dataset](https://benchmark.protein.properties/)(the download link on their website might not work. In that case you can download the dataset from their github repo)
+- [FLIP Dataset Paper](https://www.nature.com/articles/s41592-020-0801-4)
+- [HotProtein Paper](https://openreview.net/forum?id=YDJRFWBMNby)
+
+
+# Old content (Semester #1)
 This project attempts to infer the thermostability (melting point) of a given protein sequence with an end-to-end approach, meaning no information other than the sequence is needed. For this we run a forward pass of the ESMFold model and infer the thermostability of the protein based on the ESMFold representations. We also implemented the same using the ProtT5 model representations.
 With our pretrained model we have achieved a mean absolute difference (MAD) of 3.83°C and 3.49 between actual and predicted melting points over our test set for the ESMFold and ProtT5 embeddings respectively. 
 As there are multiple melting point measurements for many of the different proteins, a MAD of 0°C would not be possible. 
