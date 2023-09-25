@@ -19,6 +19,8 @@ class FSTHotProt(Module):
         factorized_sparse_tuning_rank: int = 4,
         sparse: int = 64,
     ):
+        # The code for initalizing the factorized sparse tuning components is taken from https://github.com/VITA-Group/HotProtein under the MIT License
+        
         super().__init__()
         self.hotinfer = hotprot_model
         assert (
