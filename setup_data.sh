@@ -1,5 +1,5 @@
 #!/bin/bash
-fileid="13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X"
+fileid="1Im3y2X6iwhZHFJLIOKbIGtZ0ZHBWaqD_"
 filename="data.zip"
 html=`curl -c ./cookie -s -L "https://drive.google.com/uc?export=download&id=${fileid}"`
 echo "Downloading data archive..."
