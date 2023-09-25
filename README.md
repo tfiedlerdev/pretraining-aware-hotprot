@@ -8,6 +8,9 @@ Take a look at the raw results in tabular form [here](https://docs.google.com/sp
 The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing).
 The full report can be found [here](XXX)
 
+# Copyright declaration
+We reuse the the source code of [ESM](https://github.com/facebookresearch/esm) created by Meta under the [MIT License](https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/LICENSE). The same goes for code snippets for factorized sparse tuning from [HotProtein](https://github.com/VITA-Group/HotProtein). They also allow reuse via the [MIT License](https://github.com/VITA-Group/HotProtein/blob/9cf0cbaf4454d5b3b266e1eb9a7d1b5060e2bf15/LICENSE).
+
 ## Setup
 These steps can be taken to setup the project on a linux machine.
 1. Clone the repo with `git clone https://github.com/LeonHermann322/hot-prot.git --recurse-submodules`
