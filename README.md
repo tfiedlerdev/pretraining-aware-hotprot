@@ -28,7 +28,7 @@ We have prepared a ZIP archive containing
 - (FROM SEMESTER #1) ESM per protein representation for all sequences in our train/validation/test set with a length < 700
 - (FROM SEMESTER #1) ProtT5 per protein representation for all sequences in our train/validation/test set with a length < 700
 
-1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/13g7uIYPGf45KcNRUXKzuCM_i4aibzu4X/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/1Im3y2X6iwhZHFJLIOKbIGtZ0ZHBWaqD_/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
 2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook. This will create the HotProt, HotProt median and FLIP splits.
 
 ## Resouces
