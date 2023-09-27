@@ -5,7 +5,7 @@ In the second we compare that dataset split with that used in the [FLIP paper](h
 We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
 
 Take a look at the raw results in tabular form [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results.
-The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing), providing a higher level overview over our project.
+The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing), providing a higher level overview over our project, as well as some plots not present in the report.
 The full report can be found [here](https://drive.google.com/file/d/1Yht0j3rZ-dSbUj-pgEOfIz5A0s0xRNQK/view?usp=drive_link)
 
 # Copyright declaration
@@ -31,7 +31,7 @@ We have prepared a ZIP archive containing
 - (FROM SEMESTER #1) ESM per protein representation for all sequences in our train/validation/test set with a length < 700
 - (FROM SEMESTER #1) ProtT5 per protein representation for all sequences in our train/validation/test set with a length < 700
 
-1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/file/d/1Im3y2X6iwhZHFJLIOKbIGtZ0ZHBWaqD_/view?usp=sharing) and unzip the contents to the working directory (`unzip data.zip -d .`)
+1. Run data setup script: `bash setup_data.sh`. If this does not work, manually download the ZIP via [this link](https://drive.google.com/uc?export=download&id=1Im3y2X6iwhZHFJLIOKbIGtZ0ZHBWaqD_) and unzip the contents to the working directory (`unzip data.zip -d .`)
 2. Generate our train/test set by executing all cells in [`create_datasets.ipynb`](data_analysis_generation/create_datasets.ipynb) Jupyter Notebook. This will create the HotProt, HotProt median and FLIP splits.
 
 ## Resouces
