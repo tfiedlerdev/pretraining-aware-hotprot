@@ -4,7 +4,7 @@ In the first we attempt to predict protein thermostability using ESMFold embeddi
 In the second we compare that dataset split with that used in the [FLIP paper](https://www.biorxiv.org/content/10.1101/2021.11.09.467890v1), which to the day of the project start was the first published project attempting to predict the absolute thermostability from a given amino acid sequence.
 We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
 
-Take a look at the raw results in tabular form [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results.
+Take a look at the raw results in tabular form [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results, as well as scatter plots for predictions on train, test and validation sets and other metrics.
 The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing), providing a higher level overview over our project, as well as some plots not present in the report.
 The full report can be found [here](https://drive.google.com/file/d/1Yht0j3rZ-dSbUj-pgEOfIz5A0s0xRNQK/view?usp=drive_link)
 
