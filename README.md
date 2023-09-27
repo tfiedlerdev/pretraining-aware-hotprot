@@ -5,8 +5,8 @@ In the second we compare that dataset split with that used in the [FLIP paper](h
 We also switch to using only ESM2 language model and compare different training strategies (transfer learning, factorized sparse tuning, full fine tuning) on different model sizes. 
 
 Take a look at the raw results in tabular form [here](https://docs.google.com/spreadsheets/d/1kvQ5HTotYYzatuVbeEC3KJjxD2CT6PJnxX8xMhdWSfk/edit?usp=sharing). Via the links to the wandb runs in that sheet you also find the command for running the corresponding experiment to reproduce the results.
-The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing).
-The full report can be found [here](XXX)
+The slides to our final presentation are found [here](https://docs.google.com/presentation/d/1cCd-xiZBGWxurgzb5PGClt625iiL-I8Awx7vKMT44gc/edit?usp=sharing), providing a higher level overview over our project.
+The full report can be found [here](https://drive.google.com/file/d/1Yht0j3rZ-dSbUj-pgEOfIz5A0s0xRNQK/view?usp=drive_link)
 
 # Copyright declaration
 We reuse the the source code of [ESM](https://github.com/facebookresearch/esm) created by Meta under the [MIT License](https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/LICENSE). The same goes for code snippets for factorized sparse tuning from [HotProtein](https://github.com/VITA-Group/HotProtein). They also allow reuse via the [MIT License](https://github.com/VITA-Group/HotProtein/blob/9cf0cbaf4454d5b3b266e1eb9a7d1b5060e2bf15/LICENSE).
