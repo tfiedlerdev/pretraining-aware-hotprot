@@ -24,6 +24,9 @@ export PYTHONPATH="$PYTHONPATH:/path/to/your/project/"
 ```
 
 ### Data
+The train,validation and test sets for FLIP and EPA are pregenerated and can be found under [./data](./data). 
+You can generate them yourself by following the following steps, otherwise you can skip them:
+
 We have prepared a ZIP archive containing 
 - all data required for generating our train, test and validation sets 
 - (not relevant) a pretrained model for ESM and ProtT5 representations
