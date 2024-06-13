@@ -82,9 +82,9 @@ def get_dataset(
             "test": os.path.join(splits_dir_path, "test.csv"),
         },
         "ours_median": {
-            "train": os.path.join(splits_dir_path, "train_median.csv"),
-            "val": os.path.join(splits_dir_path, "val_median.csv"),
-            "test": os.path.join(splits_dir_path, "test_median.csv"),
+            "train": os.path.join(splits_dir_path, "train_EPA.csv"),
+            "val": os.path.join(splits_dir_path, "val_EPA.csv"),
+            "test": os.path.join(splits_dir_path, "test_EPA.csv"),
         },
         "flip": {
             "train": os.path.join(splits_dir_path, "train_FLIP.csv"),

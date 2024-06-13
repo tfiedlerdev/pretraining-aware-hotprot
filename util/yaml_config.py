@@ -6,7 +6,7 @@ default_value = "<your value here>"
 help_text = {
     "WandBApiKey": "Your Weights and Biases API key. You can find it in your W&B account settings.",
     "HuggESMCacheDir": "Directory to store cached representations with format /<cache_dir>/start_token_{model_size}/<seq>.pt and /<cache_dir>/start_token_{model_size}/sequences.csv. For hugg_esm model, representation key is inferred from model size",
-    "DatasetSplitsPath": "Path to directory containing the dataset split CSV files (train.csv, val.csv, test.csv, train_median.csv, val_median.csv, test_median.csv, train_FLIP.csv, val_FLIP.csv, test_FLIP.csv).",
+    "DatasetSplitsPath": "Path to directory containing the dataset split CSV files (train.csv, val.csv, test.csv, train_EPA.csv, val_EPA.csv, test_EPA.csv, train_FLIP.csv, val_FLIP.csv, test_FLIP.csv).",
     "DatasetPath": "Path to directory containing the pregenerated dataset files with format /<dataset_path>/<representation_key>/<seq_index>.pt and /<dataset_path>/<representation_key>/sequences.csv.",
 }
 
