@@ -1,5 +1,5 @@
 # Data Leakage from Protein LLM Pretraining
-This repository contains the code and results related to our paper Beware of Data Leakage from Protein LLM Pretraining.
+This repository contains the code and results related to our paper [Beware of Data Leakage from Protein LLM Pretraining](https://www.biorxiv.org/content/10.1101/2024.07.23.604678v1).
 We measure the effects of data leakage from Protein Language Model (PLM) pretraining on the downstream task of protein thermostability prediction.
 We do this by comparing the performance of a simple fully connected neural network attached to different [ESM](https://github.com/facebookresearch/esm) variants on two different dataset split strategies: one that considers which data ESM was pretrained on (EPA - ours) and one which doesn't (FLIP, from [FLIP paper](https://www.biorxiv.org/content/10.1101/2021.11.09.467890v1)).
 
@@ -51,6 +51,7 @@ We have prepared a ZIP archive containing
 ```sh
 EXPORT LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/anaconda3/envs/hotprot/lib
 ```
+
 
 
 
